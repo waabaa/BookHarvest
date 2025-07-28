@@ -42,11 +42,12 @@ class CommBooksScraper:
             book_elements = soup.find_all('a', href=True)
             
             for element in book_elements:
-                href = element.get('href', '')
-                # Filter for book detail pages
-                if '/도서/' in href and href not in book_links:
-                    full_url = urljoin(self.base_url, href)
-                    book_links.append(full_url)
+                href = element.get('href')
+                if href and isinstance(href, str):
+                    # Filter for book detail pages
+                    if '/도서/' in href and href not in book_links:
+                        full_url = urljoin(self.base_url, href)
+                        book_links.append(full_url)
             
             logger.info(f"Found {len(book_links)} book links on page {page_num}")
             return book_links
@@ -94,11 +95,12 @@ class CommBooksScraper:
                 try:
                     if ':contains(' in selector:
                         # Handle contains pseudo-selector manually
-                        elements = soup.find_all(text=lambda text: text and "지은이" in text)
+                        elements = soup.find_all(string=lambda text: text and "지은이" in str(text))
                         if elements:
                             parent = elements[0].parent
-                            book_data['author'] = parent.get_text(strip=True).replace('지은이', '').strip()
-                            break
+                            if parent:
+                                book_data['author'] = parent.get_text(strip=True).replace('지은이', '').strip()
+                                break
                     else:
                         author_element = soup.select_one(selector)
                         if author_element:
@@ -131,11 +133,12 @@ class CommBooksScraper:
             for selector in review_selectors:
                 try:
                     if ':contains(' in selector:
-                        elements = soup.find_all(text=lambda text: text and "200자평" in text)
+                        elements = soup.find_all(string=lambda text: text and "200자평" in str(text))
                         if elements:
                             parent = elements[0].parent
-                            book_data['review_200'] = parent.get_text(strip=True)
-                            break
+                            if parent:
+                                book_data['review_200'] = parent.get_text(strip=True)
+                                break
                     else:
                         review_element = soup.select_one(selector)
                         if review_element:
@@ -154,11 +157,12 @@ class CommBooksScraper:
             for selector in contents_selectors:
                 try:
                     if ':contains(' in selector:
-                        elements = soup.find_all(text=lambda text: text and "차례" in text)
+                        elements = soup.find_all(string=lambda text: text and "차례" in str(text))
                         if elements:
                             parent = elements[0].parent
-                            book_data['contents'] = parent.get_text(strip=True)
-                            break
+                            if parent:
+                                book_data['contents'] = parent.get_text(strip=True)
+                                break
                     else:
                         contents_element = soup.select_one(selector)
                         if contents_element:
@@ -177,11 +181,12 @@ class CommBooksScraper:
             for selector in preview_selectors:
                 try:
                     if ':contains(' in selector:
-                        elements = soup.find_all(text=lambda text: text and "책속으로" in text)
+                        elements = soup.find_all(string=lambda text: text and "책속으로" in str(text))
                         if elements:
                             parent = elements[0].parent
-                            book_data['book_preview'] = parent.get_text(strip=True)
-                            break
+                            if parent:
+                                book_data['book_preview'] = parent.get_text(strip=True)
+                                break
                     else:
                         preview_element = soup.select_one(selector)
                         if preview_element:
@@ -200,11 +205,12 @@ class CommBooksScraper:
             for selector in date_selectors:
                 try:
                     if ':contains(' in selector:
-                        elements = soup.find_all(text=lambda text: text and "발행일" in text)
+                        elements = soup.find_all(string=lambda text: text and "발행일" in str(text))
                         if elements:
                             parent = elements[0].parent
-                            book_data['publish_date'] = parent.get_text(strip=True).replace('발행일', '').strip()
-                            break
+                            if parent:
+                                book_data['publish_date'] = parent.get_text(strip=True).replace('발행일', '').strip()
+                                break
                     else:
                         date_element = soup.select_one(selector)
                         if date_element:
@@ -224,12 +230,14 @@ class CommBooksScraper:
             
             for selector in img_selectors:
                 img_element = soup.select_one(selector)
-                if img_element and img_element.get('src'):
-                    img_url = urljoin(book_url, img_element['src'])
-                    image_path = self.download_image(img_url, book_data['title'])
-                    if image_path:
-                        book_data['cover_image_path'] = image_path
-                        break
+                if img_element:
+                    src = img_element.get('src')
+                    if src and isinstance(src, str):
+                        img_url = urljoin(book_url, src)
+                        image_path = self.download_image(img_url, book_data['title'])
+                        if image_path:
+                            book_data['cover_image_path'] = image_path
+                            break
             
             return book_data
             
@@ -282,17 +290,16 @@ class CommBooksScraper:
                 return existing_book
             
             # Create new book record
-            book = Book(
-                title=book_data['title'],
-                author=book_data['author'],
-                description=book_data['description'],
-                review_200=book_data['review_200'],
-                contents=book_data['contents'],
-                book_preview=book_data['book_preview'],
-                publish_date=book_data['publish_date'],
-                cover_image_path=book_data['cover_image_path'],
-                book_url=book_data['book_url']
-            )
+            book = Book()
+            book.title = book_data['title']
+            book.author = book_data['author']
+            book.description = book_data['description']
+            book.review_200 = book_data['review_200']
+            book.contents = book_data['contents']
+            book.book_preview = book_data['book_preview']
+            book.publish_date = book_data['publish_date']
+            book.cover_image_path = book_data['cover_image_path']
+            book.book_url = book_data['book_url']
             
             db.session.add(book)
             db.session.commit()
@@ -307,72 +314,74 @@ class CommBooksScraper:
     
     def run_scraping_job(self, job_id):
         """Run a scraping job in background"""
-        job = ScrapingJob.query.get(job_id)
-        if not job:
-            return
+        from app import app
         
-        try:
-            job.status = 'running'
-            job.started_at = datetime.utcnow()
-            db.session.commit()
+        with app.app_context():
+            job = ScrapingJob.query.get(job_id)
+            if not job:
+                return
             
-            # Collect all book links first
-            all_book_links = []
-            for page_num in range(job.start_page, job.end_page + 1):
-                job.current_page = page_num
+            try:
+                job.status = 'running'
+                job.started_at = datetime.utcnow()
                 db.session.commit()
                 
-                book_links = self.get_page_book_links(page_num)
-                all_book_links.extend(book_links)
-                
-                # Rate limiting
-                time.sleep(1)
-            
-            job.total_books_found = len(all_book_links)
-            db.session.commit()
-            
-            # Scrape each book
-            for book_url in all_book_links:
-                try:
-                    book_data = self.scrape_book_details(book_url)
-                    if book_data:
-                        saved_book = self.save_book_to_db(book_data)
-                        if saved_book:
-                            job.books_scraped += 1
-                        else:
-                            job.books_failed += 1
-                    else:
-                        job.books_failed += 1
-                    
+                # Collect all book links first
+                all_book_links = []
+                for page_num in range(job.start_page, job.end_page + 1):
+                    job.current_page = page_num
                     db.session.commit()
+                    
+                    book_links = self.get_page_book_links(page_num)
+                    all_book_links.extend(book_links)
                     
                     # Rate limiting
-                    time.sleep(2)
-                    
-                except Exception as e:
-                    logger.error(f"Error processing book {book_url}: {str(e)}")
-                    job.books_failed += 1
-                    db.session.commit()
-            
-            job.status = 'completed'
-            job.completed_at = datetime.utcnow()
-            db.session.commit()
-            
-            logger.info(f"Scraping job {job_id} completed successfully")
-            
-        except Exception as e:
-            logger.error(f"Scraping job {job_id} failed: {str(e)}")
-            job.status = 'failed'
-            job.error_message = str(e)
-            job.completed_at = datetime.utcnow()
-            db.session.commit()
+                    time.sleep(1)
+                
+                job.total_books_found = len(all_book_links)
+                db.session.commit()
+                
+                # Scrape each book
+                for book_url in all_book_links:
+                    try:
+                        book_data = self.scrape_book_details(book_url)
+                        if book_data:
+                            saved_book = self.save_book_to_db(book_data)
+                            if saved_book:
+                                job.books_scraped += 1
+                            else:
+                                job.books_failed += 1
+                        else:
+                            job.books_failed += 1
+                        
+                        db.session.commit()
+                        
+                        # Rate limiting
+                        time.sleep(2)
+                        
+                    except Exception as e:
+                        logger.error(f"Error processing book {book_url}: {str(e)}")
+                        job.books_failed += 1
+                        db.session.commit()
+                
+                job.status = 'completed'
+                job.completed_at = datetime.utcnow()
+                db.session.commit()
+                
+                logger.info(f"Scraping job {job_id} completed successfully")
+                
+            except Exception as e:
+                logger.error(f"Scraping job {job_id} failed: {str(e)}")
+                job.status = 'failed'
+                job.error_message = str(e)
+                job.completed_at = datetime.utcnow()
+                db.session.commit()
 
 def start_scraping_job(start_page, end_page):
     """Start a new scraping job"""
-    job = ScrapingJob(
-        start_page=start_page,
-        end_page=end_page
-    )
+    job = ScrapingJob()
+    job.start_page = start_page
+    job.end_page = end_page
     
     db.session.add(job)
     db.session.commit()
