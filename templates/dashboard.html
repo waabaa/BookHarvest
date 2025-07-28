@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - CommBooks Scraper{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="card-title">{{ total_books }}</h4>
+                        <p class="card-text">Total Books</p>
+                    </div>
+                    <i class="fas fa-book fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="card-title">{{ completed_jobs }}</h4>
+                        <p class="card-text">Completed Jobs</p>
+                    </div>
+                    <i class="fas fa-check-circle fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="card-title">{{ running_jobs }}</h4>
+                        <p class="card-text">Running Jobs</p>
+                    </div>
+                    <i class="fas fa-spinner fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="card-title">{{ failed_jobs }}</h4>
+                        <p class="card-text">Failed Jobs</p>
+                    </div>
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Start New Scraping Job -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-play me-2"></i>Start New Scraping Job
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('start_scraping') }}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="start_page" class="form-label">Start Page</label>
+                                <input type="number" class="form-control" id="start_page" name="start_page" 
+                                       value="1" min="1" max="100" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="end_page" class="form-label">End Page</label>
+                                <input type="number" class="form-control" id="end_page" name="end_page" 
+                                       value="26" min="1" max="100" required>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" {% if running_jobs > 0 %}disabled{% endif %}>
+                        <i class="fas fa-play me-2"></i>Start Scraping
+                    </button>
+                    {% if running_jobs > 0 %}
+                        <small class="text-muted d-block mt-2">
+                            A scraping job is currently running. Please wait for it to complete.
+                        </small>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Current Job Status -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Latest Job Status
+                </h5>
+            </div>
+            <div class="card-body" id="job-status">
+                {% if latest_job %}
+                    <div class="job-info" data-job-id="{{ latest_job.id }}">
+                        <p><strong>Status:</strong> 
+                            <span class="badge bg-{{ 'success' if latest_job.status == 'completed' else 'warning' if latest_job.status == 'running' else 'danger' if latest_job.status == 'failed' else 'secondary' }}">
+                                {{ latest_job.status.title() }}
+                            </span>
+                        </p>
+                        <p><strong>Pages:</strong> {{ latest_job.start_page }} - {{ latest_job.end_page }}</p>
+                        {% if latest_job.status == 'running' %}
+                            <p><strong>Current Page:</strong> <span id="current-page">{{ latest_job.current_page }}</span></p>
+                        {% endif %}
+                        <p><strong>Books Found:</strong> <span id="books-found">{{ latest_job.total_books_found or 0 }}</span></p>
+                        <p><strong>Books Scraped:</strong> <span id="books-scraped">{{ latest_job.books_scraped }}</span></p>
+                        {% if latest_job.books_failed > 0 %}
+                            <p><strong>Books Failed:</strong> <span id="books-failed">{{ latest_job.books_failed }}</span></p>
+                        {% endif %}
+                        
+                        {% if latest_job.status == 'running' and latest_job.total_books_found > 0 %}
+                            <div class="progress mt-3">
+                                <div class="progress-bar" role="progressbar" id="progress-bar" 
+                                     style="width: {{ (latest_job.books_scraped / latest_job.total_books_found * 100)|round(1) }}%">
+                                    {{ (latest_job.books_scraped / latest_job.total_books_found * 100)|round(1) }}%
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No scraping jobs have been started yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Books -->
+{% if recent_books %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-book me-2"></i>Recently Scraped Books
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for book in recent_books %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            {% if book.cover_image_path %}
+                            <img src="{{ url_for('static', filename=book.cover_image_path.replace('static/', '')) }}" 
+                                 class="card-img-top" alt="{{ book.title }}" style="height: 200px; object-fit: cover;">
+                            {% endif %}
+                            <div class="card-body">
+                                <h6 class="card-title">{{ book.title[:50] }}{% if book.title|length > 50 %}...{% endif %}</h6>
+                                {% if book.author %}
+                                    <p class="card-text"><small class="text-muted">{{ book.author }}</small></p>
+                                {% endif %}
+                                {% if book.description %}
+                                    <p class="card-text">{{ book.description[:100] }}{% if book.description|length > 100 %}...{% endif %}</p>
+                                {% endif %}
+                                <a href="{{ url_for('book_detail', book_id=book.id) }}" class="btn btn-sm btn-outline-primary">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('books_list') }}" class="btn btn-primary">
+                        <i class="fas fa-eye me-2"></i>View All Books
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh job status every 5 seconds
+setInterval(function() {
+    const jobInfo = document.querySelector('.job-info');
+    if (jobInfo) {
+        const jobId = jobInfo.dataset.jobId;
+        fetch(`/api/job_status/${jobId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'running') {
+                    // Update progress information
+                    if (document.getElementById('current-page')) {
+                        document.getElementById('current-page').textContent = data.current_page;
+                    }
+                    if (document.getElementById('books-found')) {
+                        document.getElementById('books-found').textContent = data.total_books_found;
+                    }
+                    if (document.getElementById('books-scraped')) {
+                        document.getElementById('books-scraped').textContent = data.books_scraped;
+                    }
+                    if (document.getElementById('books-failed')) {
+                        document.getElementById('books-failed').textContent = data.books_failed;
+                    }
+                    
+                    // Update progress bar
+                    const progressBar = document.getElementById('progress-bar');
+                    if (progressBar && data.total_books_found > 0) {
+                        const percentage = Math.round((data.books_scraped / data.total_books_found) * 100 * 10) / 10;
+                        progressBar.style.width = percentage + '%';
+                        progressBar.textContent = percentage + '%';
+                    }
+                } else if (data.status === 'completed' || data.status === 'failed') {
+                    // Reload page when job is completed
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching job status:', error);
+            });
+    }
+}, 5000);
+</script>
+{% endblock %}
