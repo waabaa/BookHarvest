@@ -1,0 +1,739 @@
+{% extends "base.html" %}
+
+{% block title %}{{ book.title }} - AI오투오 AI 강의 파트너{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">대시보드</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('books_list') }}">책 목록</a></li>
+                <li class="breadcrumb-item active">{{ book.title[:30] }}{% if book.title|length > 30 %}...{% endif %}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Book Cover and Basic Info -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                {% if book.cover_image_path %}
+                <img src="{{ url_for('static', filename=book.cover_image_path.replace('static/', '')) }}" 
+                     class="book-detail-image img-fluid mb-3" alt="{{ book.title }}"
+                     onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/no-cover.svg') }}';">
+                {% else %}
+                <div class="book-cover-placeholder mb-3" style="height: 400px;">
+                    <i class="fas fa-book"></i>
+                </div>
+                {% endif %}
+                
+                <h4 class="card-title">{{ book.title }}</h4>
+                {% if book.author %}
+                    <p class="card-text"><strong><i class="fas fa-user me-2"></i>저자:</strong> {{ book.author }}</p>
+                {% endif %}
+                {% if book.publish_date %}
+                    <p class="card-text"><strong><i class="fas fa-calendar me-2"></i>발행일:</strong> {{ book.publish_date }}</p>
+                {% endif %}
+                
+                <div class="mt-3">
+                    {% if book.book_url %}
+                    <a href="{{ book.book_url }}" target="_blank" class="btn btn-primary">
+                        <i class="fas fa-external-link-alt me-2"></i>원본 사이트에서 보기
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>수집일: {{ book.scraped_at.strftime('%Y-%m-%d %H:%M') if book.scraped_at else '정보 없음' }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Book Details -->
+    <div class="col-lg-8">
+        <!-- Book Description -->
+        {% if book.description %}
+        <div class="book-content-section mb-4">
+            <h5><i class="fas fa-info-circle me-2"></i>책 소개</h5>
+            <div class="content-text">{{ book.description|replace('\n', '<br>')|safe }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- 200자평 -->
+        {% if book.review_200 %}
+        <div class="book-content-section mb-4">
+            <h5><i class="fas fa-quote-right me-2"></i>200자평</h5>
+            <div class="content-text">{{ book.review_200|replace('\n', '<br>')|safe }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- Table of Contents -->
+        {% if book.contents %}
+        <div class="book-content-section mb-4">
+            <h5><i class="fas fa-list me-2"></i>차례</h5>
+            <div class="content-text">{{ book.contents|replace('\n', '<br>')|safe }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- Book Preview -->
+        {% if book.book_preview %}
+        <div class="book-content-section mb-4">
+            <h5><i class="fas fa-eye me-2"></i>책속으로 (책 브리핑)</h5>
+            <div class="content-text">{{ book.book_preview|replace('\n', '<br>')|safe }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- If no content available -->
+        {% if not book.description and not book.review_200 and not book.contents and not book.book_preview %}
+        <div class="book-content-section mb-4">
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <h5>상세 정보가 수집되지 않았습니다</h5>
+                <p>이 책의 상세 정보는 웹사이트에서 추출할 수 없었습니다.</p>
+                {% if book.book_url %}
+                <a href="{{ book.book_url }}" target="_blank" class="btn btn-outline-primary">
+                    <i class="fas fa-external-link-alt me-2"></i>원본 사이트에서 확인하기
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- AI Lecture Plan Section -->
+<div class="row mt-5">
+    <div class="col">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-graduation-cap me-2"></i>AI 강의안</h4>
+            </div>
+            <div class="card-body">
+                <!-- PDF 첨부 파일 섹션 -->
+                <div class="book-content-section mb-4">
+                    <h5><i class="fas fa-file-pdf me-2"></i>PDF 첨부 파일</h5>
+                    
+                    <!-- PDF 업로드 폼 -->
+                    <form method="POST" action="{{ url_for('upload_pdf', book_id=book.id) }}" enctype="multipart/form-data" class="mb-3">
+                        <div class="row align-items-end">
+                            <div class="col-md-8">
+                                <label for="pdf_file" class="form-label">PDF 파일 선택 (최대 10MB)</label>
+                                <input type="file" class="form-control" id="pdf_file" name="pdf_file" accept=".pdf" required>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-upload me-1"></i>업로드
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <!-- 첨부된 PDF 목록 -->
+                    {% set pdf_attachments = book.pdf_attachments %}
+                    {% if pdf_attachments %}
+                    <div class="mb-3">
+                        <h6>첨부된 PDF 파일:</h6>
+                        {% for pdf in pdf_attachments %}
+                        <div class="d-flex justify-content-between align-items-center p-2 mb-2 border rounded">
+                            <div>
+                                <i class="fas fa-file-pdf text-danger me-2"></i>
+                                <strong>{{ pdf.filename }}</strong>
+                                <small class="text-muted ms-2">
+                                    ({{ "%.1f"|format(pdf.file_size / 1024) }}KB, 
+                                    {{ pdf.uploaded_at.strftime('%Y-%m-%d %H:%M') }})
+                                </small>
+                            </div>
+                            <form method="POST" action="{{ url_for('delete_pdf', pdf_id=pdf.id) }}" 
+                                  style="display: inline;" 
+                                  onsubmit="return confirm('정말로 이 PDF 파일을 삭제하시겠습니까?')">
+                                <input type="hidden" name="book_id" value="{{ book.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">첨부된 PDF 파일이 없습니다. PDF를 첨부하면 더 풍부한 강의안을 생성할 수 있습니다.</p>
+                    {% endif %}
+                </div>
+                
+                {% if not lecture_plan %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-robot fa-3x text-muted mb-3"></i>
+                        <h5>AI 강의안이 아직 생성되지 않았습니다</h5>
+                        <p class="text-muted mb-4">
+                            책 내용을 바탕으로 3-4강 분량의 체계적인 강의안을 AI로 자동 생성할 수 있습니다.
+                            {% if pdf_attachments %}
+                            <br><strong class="text-success">첨부된 PDF 내용이 강의안에 포함됩니다!</strong>
+                            {% endif %}
+                        </p>
+                        <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" id="generate-lecture-form">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="lecture_style" class="form-label">강의 스타일</label>
+                                    <select class="form-select" id="lecture_style" name="lecture_style" required>
+                                        <option value="">스타일을 선택하세요</option>
+                                        <option value="theoretical">이론 중심형 - 개념과 원리 깊이 있게 학습</option>
+                                        <option value="practical">실습 중심형 - 실무 사례와 예제 중심</option>
+                                        <option value="discussion">토론 중심형 - 상호작용과 토론 기반</option>
+                                        <option value="case_study">사례 연구형 - 실제 사례 분석 중심</option>
+                                        <option value="workshop">워크숍형 - 참여형 활동과 그룹 작업</option>
+                                        <option value="seminar">세미나형 - 발표와 질의응답 중심</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="target_level" class="form-label">대상 수준</label>
+                                    <select class="form-select" id="target_level" name="target_level" required>
+                                        <option value="">수준을 선택하세요</option>
+                                        <option value="beginner">초급 - 기초 개념부터 시작</option>
+                                        <option value="intermediate">중급 - 기본 지식 보유자 대상</option>
+                                        <option value="advanced">고급 - 전문가 수준</option>
+                                        <option value="mixed">혼합 - 다양한 수준 고려</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="session_count" class="form-label">강의 세션 수</label>
+                                    <select class="form-select" id="session_count" name="session_count" required>
+                                        <option value="">세션 수를 선택하세요</option>
+                                        <option value="3">3강 (빠른 생성)</option>
+                                        <option value="4" selected>4강 (권장)</option>
+                                        <option value="5">5강 (시간 소요)</option>
+                                        <option value="6">6강 (긴 처리 시간)</option>
+                                    </select>
+                                    <div class="form-text text-muted small">
+                                        <i class="fas fa-info-circle me-1"></i>세션 수가 많을수록 생성 시간이 오래 걸립니다
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="session_duration" class="form-label">강의 시간</label>
+                                    <select class="form-select" id="session_duration" name="session_duration" required>
+                                        <option value="">시간을 선택하세요</option>
+                                        <option value="60">60분 (1시간)</option>
+                                        <option value="90" selected>90분 (1시간 30분)</option>
+                                        <option value="120">120분 (2시간)</option>
+                                        <option value="180">180분 (3시간)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="special_focus" class="form-label">특별 강조 사항 (선택사항)</label>
+                                <textarea class="form-control" id="special_focus" name="special_focus" rows="2" 
+                                          placeholder="예: 실무 적용 사례, 최신 트렌드, 윤리적 고려사항 등"></textarea>
+                            </div>
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-primary btn-lg" id="generate-btn">
+                                    <i class="fas fa-magic me-2"></i>AI 강의안 생성하기 (빠른 모드)
+                                </button>
+                                <div class="form-text text-muted small mt-2">
+                                    <i class="fas fa-lightbulb me-1"></i>더 빠르고 안정적인 AI 모델을 사용합니다
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                {% else %}
+                    <!-- Lecture Overview -->
+                    <div class="lecture-overview mb-4">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="mb-0">강의 개요</h5>
+                            {% if lecture_plan.generated_at %}
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>{{ lecture_plan.generated_at }}에 생성
+                            </small>
+                            {% endif %}
+                        </div>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6>{{ lecture_plan.lecture_overview.title }}</h6>
+                                <p>{{ lecture_plan.lecture_overview.description }}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <p><strong>대상:</strong> {{ lecture_plan.lecture_overview.target_audience }}</p>
+                                <p><strong>총 시간:</strong> {{ lecture_plan.lecture_overview.duration }}</p>
+                                
+                                {% if lecture_plan.user_preferences %}
+                                <hr class="my-2">
+                                <small class="text-muted">
+                                    <strong>설정된 옵션:</strong><br>
+                                    {% if lecture_plan.user_preferences.lecture_style %}
+                                        {% set style_names = {
+                                            'theoretical': '이론 중심형',
+                                            'practical': '실습 중심형', 
+                                            'discussion': '토론 중심형',
+                                            'case_study': '사례 연구형',
+                                            'workshop': '워크숍형',
+                                            'seminar': '세미나형'
+                                        } %}
+                                        스타일: {{ style_names.get(lecture_plan.user_preferences.lecture_style, lecture_plan.user_preferences.lecture_style) }}<br>
+                                    {% endif %}
+                                    {% if lecture_plan.user_preferences.target_level %}
+                                        {% set level_names = {
+                                            'beginner': '초급',
+                                            'intermediate': '중급', 
+                                            'advanced': '고급',
+                                            'mixed': '혼합'
+                                        } %}
+                                        수준: {{ level_names.get(lecture_plan.user_preferences.target_level, lecture_plan.user_preferences.target_level) }}<br>
+                                    {% endif %}
+                                    {% if lecture_plan.user_preferences.session_count %}
+                                        세션: {{ lecture_plan.user_preferences.session_count }}강<br>
+                                    {% endif %}
+                                    {% if lecture_plan.user_preferences.session_duration %}
+                                        시간: {{ lecture_plan.user_preferences.session_duration }}분<br>
+                                    {% endif %}
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {% if lecture_plan.lecture_overview.learning_objectives %}
+                        <div class="mt-3">
+                            <strong>학습 목표:</strong>
+                            <ul class="list-unstyled mt-2">
+                                {% for objective in lecture_plan.lecture_overview.learning_objectives %}
+                                <li><i class="fas fa-check-circle text-success me-2"></i>{{ objective }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Individual Lectures -->
+                    {% if lecture_plan.lectures %}
+                    <div class="lectures-section mb-4">
+                        <h5 class="border-bottom pb-2">강의 구성</h5>
+                        {% for lecture in lecture_plan.lectures %}
+                        <div class="lecture-card border rounded p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0">{{ lecture.lecture_number }}강: {{ lecture.title }}</h6>
+                                <span class="badge bg-info">{{ lecture.duration }}</span>
+                            </div>
+                            
+                            {% if lecture.objectives %}
+                            <div class="mb-2">
+                                <small class="text-muted"><strong>목표:</strong></small>
+                                <ul class="list-inline mb-0 ms-2">
+                                    {% for obj in lecture.objectives %}
+                                    <li class="list-inline-item small">• {{ obj }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                            
+                            {% if lecture.outline %}
+                            <div class="lecture-outline mb-3">
+                                <small class="text-muted"><strong>구성:</strong></small>
+                                <div class="border-start border-primary border-3 ps-3 mt-2">
+                                    {% for section in lecture.outline %}
+                                    <div class="p-3 mb-3 rounded shadow-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <strong class="text-white fs-6"><i class="fas fa-play-circle me-2"></i>{{ section.section }}</strong>
+                                            {% if section.time %}<span class="badge bg-warning text-dark">{{ section.time }}</span>{% endif %}
+                                        </div>
+                                        {% if section.content %}
+                                            <div class="lecture-content-main mb-3 p-3 rounded shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                                <i class="fas fa-chalkboard-teacher me-2"></i>
+                                                <strong>강의 내용:</strong><br>
+                                                <div class="mt-2" style="line-height: 1.6; font-size: 14px;">{{ section.content }}</div>
+                                            </div>
+                                        {% endif %}
+                                        {% if section.detailed_explanations %}
+                                            <div class="mb-3">
+                                                <strong class="text-info mb-2 d-block"><i class="fas fa-book-open me-1"></i>상세 설명:</strong>
+                                                <div class="row">
+                                                    {% for explanation in section.detailed_explanations %}
+                                                    <div class="col-md-4 mb-2">
+                                                        {% if loop.index == 1 %}
+                                                        <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                                                            <div class="card-body text-white">
+                                                                <h6 class="card-title"><i class="fas fa-brain me-2"></i>{{ explanation.title }}</h6>
+                                                                <p class="card-text small" style="line-height: 1.5;">{{ explanation.content }}</p>
+                                                            </div>
+                                                        </div>
+                                                        {% elif loop.index == 2 %}
+                                                        <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                                                            <div class="card-body text-white">
+                                                                <h6 class="card-title"><i class="fas fa-briefcase me-2"></i>{{ explanation.title }}</h6>
+                                                                <p class="card-text small" style="line-height: 1.5;">{{ explanation.content }}</p>
+                                                            </div>
+                                                        </div>
+                                                        {% else %}
+                                                        <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                                                            <div class="card-body text-white">
+                                                                <h6 class="card-title"><i class="fas fa-star me-2"></i>{{ explanation.title }}</h6>
+                                                                <p class="card-text small" style="line-height: 1.5;">{{ explanation.content }}</p>
+                                                            </div>
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                        {% if section.examples %}
+                                            <div class="text-success small mb-2">
+                                                <strong><i class="fas fa-lightbulb me-1"></i>예시:</strong>
+                                                <ul class="list-unstyled mb-0 ms-3">
+                                                    {% for example in section.examples %}
+                                                    <li class="mb-1">• {{ example }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                        {% if section.key_points %}
+                                            <div class="text-warning small mb-2">
+                                                <strong><i class="fas fa-star me-1"></i>핵심 포인트:</strong>
+                                                {% for point in section.key_points %}
+                                                <span class="badge bg-warning text-dark me-1">{{ point }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if section.activities %}
+                                            <div class="text-success small mb-1"><i class="fas fa-tasks me-1"></i><strong>활동:</strong> {{ section.activities }}</div>
+                                        {% endif %}
+                                        {% if section.materials %}
+                                            <div class="text-info small"><i class="fas fa-tools me-1"></i><strong>준비물:</strong> {{ section.materials }}</div>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="row">
+                                {% if lecture.key_concepts %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-success"><strong><i class="fas fa-lightbulb me-1"></i>핵심 개념:</strong></small><br>
+                                    {% for concept in lecture.key_concepts %}
+                                    <span class="badge bg-success me-1 mb-1">{{ concept }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                
+                                {% if lecture.activities %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-warning"><strong><i class="fas fa-play-circle me-1"></i>활동:</strong></small><br>
+                                    {% for activity in lecture.activities %}
+                                    <span class="badge bg-warning text-dark me-1 mb-1">{{ activity }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if lecture.homework or lecture.reading_materials or lecture.practical_examples %}
+                            <div class="mt-2 p-2 bg-light rounded border">
+                                <div class="row">
+                                    {% if lecture.homework %}
+                                    <div class="col-md-4">
+                                        <small class="text-danger"><strong><i class="fas fa-edit me-1"></i>과제:</strong></small>
+                                        <ul class="list-unstyled mb-0">
+                                            {% for hw in lecture.homework %}
+                                            <li class="small">• {{ hw }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if lecture.reading_materials %}
+                                    <div class="col-md-4">
+                                        <small class="text-info"><strong><i class="fas fa-book me-1"></i>읽기 자료:</strong></small>
+                                        <ul class="list-unstyled mb-0">
+                                            {% for material in lecture.reading_materials %}
+                                            <li class="small">• {{ material }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if lecture.practical_examples %}
+                                    <div class="col-md-4">
+                                        <small class="text-secondary"><strong><i class="fas fa-code me-1"></i>실무 예제:</strong></small>
+                                        <ul class="list-unstyled mb-0">
+                                            {% for example in lecture.practical_examples %}
+                                            <li class="small">• {{ example }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Assessment and Resources -->
+                    <div class="row">
+                        {% if lecture_plan.assessment %}
+                        <div class="col-md-6">
+                            <h6>평가 방법</h6>
+                            {% if lecture_plan.assessment.methods %}
+                            <ul class="list-unstyled">
+                                {% for method in lecture_plan.assessment.methods %}
+                                <li><i class="fas fa-clipboard-check text-primary me-2"></i>{{ method }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            {% if lecture_plan.assessment.criteria %}
+                            <small class="text-muted">{{ lecture_plan.assessment.criteria }}</small>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if lecture_plan.resources %}
+                        <div class="col-md-6">
+                            <h6>학습 자료</h6>
+                            {% if lecture_plan.resources.required %}
+                            <div class="mb-2">
+                                <small><strong>필수:</strong></small>
+                                <ul class="list-unstyled">
+                                    {% for resource in lecture_plan.resources.required %}
+                                    <li><i class="fas fa-book text-danger me-2"></i>{{ resource }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                            {% if lecture_plan.resources.recommended %}
+                            <div>
+                                <small><strong>추천:</strong></small>
+                                <ul class="list-unstyled">
+                                    {% for resource in lecture_plan.resources.recommended %}
+                                    <li><i class="fas fa-book-open text-info me-2"></i>{{ resource }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Regenerate Button -->
+                    <div class="text-center mt-4 pt-3 border-top">
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#regenerateLectureModal">
+                            <i class="fas fa-sync-alt me-2"></i>강의안 재생성
+                        </button>
+                        <div class="mt-3">
+                            <a href="{{ url_for('download_lecture_ppt', book_id=book.id) }}" class="btn btn-success me-2">
+                                <i class="fas fa-download me-2"></i>PPT 다운로드
+                            </a>
+                            <small class="text-muted d-block mt-2">
+                                새로운 강의안을 생성하면 기존 강의안은 히스토리에 보관됩니다.
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- Lecture History -->
+                    {% if lecture_plan.history and lecture_plan.history|length > 0 %}
+                    <div class="mt-4 pt-3 border-top">
+                        <h6><i class="fas fa-history me-2"></i>강의안 생성 히스토리</h6>
+                        <div class="accordion" id="lectureHistoryAccordion">
+                            {% for hist_item in lecture_plan.history %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading{{ loop.index }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#collapse{{ loop.index }}" aria-expanded="false">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-2"></i>{{ hist_item.generated_at }}에 생성된 강의안
+                                        </small>
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" 
+                                     data-bs-parent="#lectureHistoryAccordion">
+                                    <div class="accordion-body">
+                                        {% if hist_item.plan.lecture_overview %}
+                                        <h6>{{ hist_item.plan.lecture_overview.title }}</h6>
+                                        <p class="small text-muted">{{ hist_item.plan.lecture_overview.description }}</p>
+                                        {% endif %}
+                                        
+                                        {% if hist_item.plan.lectures %}
+                                        <div class="small">
+                                            <strong>강의 구성:</strong>
+                                            <ul class="list-unstyled mt-1 ms-3">
+                                                {% for lecture in hist_item.plan.lectures %}
+                                                <li>{{ lecture.lecture_number }}강: {{ lecture.title }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Back to List Button -->
+<div class="row mt-4">
+    <div class="col">
+        <a href="{{ url_for('books_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>책 목록으로 돌아가기
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.content-text {
+    line-height: 1.8;
+    white-space: pre-wrap;
+}
+
+.lecture-card {
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    transition: box-shadow 0.2s;
+}
+
+.lecture-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.lecture-overview {
+    background-color: var(--bs-dark-bg-subtle);
+    border-left: 4px solid var(--bs-primary);
+    padding: 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--bs-border-color);
+}
+
+.book-detail-image {
+    max-height: 400px;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.loading-btn {
+    position: relative;
+}
+
+.loading-btn:disabled {
+    pointer-events: none;
+}
+
+.loading-btn .spinner-border {
+    width: 1rem;
+    height: 1rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle generate lecture button
+    const generateForm = document.getElementById('generate-lecture-form');
+    const generateBtn = document.getElementById('generate-btn');
+    
+    if (generateForm && generateBtn) {
+        generateForm.addEventListener('submit', function(e) {
+            // Show loading state
+            generateBtn.disabled = true;
+            generateBtn.classList.add('loading-btn');
+            generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>AI 강의안 생성 중...';
+        });
+    }
+    
+    // Handle modal regenerate lecture button
+    const modalRegenerateForm = document.getElementById('regenerate-lecture-form');
+    const modalRegenerateBtn = document.getElementById('regenerate-btn');
+    
+    if (modalRegenerateForm && modalRegenerateBtn) {
+        modalRegenerateForm.addEventListener('submit', function(e) {
+            // Show loading state
+            modalRegenerateBtn.disabled = true;
+            modalRegenerateBtn.classList.add('loading-btn');
+            modalRegenerateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>새 강의안 생성 중...';
+        });
+    }
+});
+</script>
+
+<!-- Regenerate Lecture Modal -->
+<div class="modal fade" id="regenerateLectureModal" tabindex="-1" aria-labelledby="regenerateLectureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="regenerateLectureModalLabel">새로운 강의안 생성</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" id="regenerate-lecture-form">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="regen_lecture_style" class="form-label">강의 스타일</label>
+                            <select class="form-select" id="regen_lecture_style" name="lecture_style" required>
+                                <option value="">스타일을 선택하세요</option>
+                                <option value="theoretical">이론 중심형 - 개념과 원리 깊이 있게 학습</option>
+                                <option value="practical">실습 중심형 - 실무 사례와 예제 중심</option>
+                                <option value="discussion">토론 중심형 - 상호작용과 토론 기반</option>
+                                <option value="case_study">사례 연구형 - 실제 사례 분석 중심</option>
+                                <option value="workshop">워크숍형 - 참여형 활동과 그룹 작업</option>
+                                <option value="seminar">세미나형 - 발표와 질의응답 중심</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="regen_target_level" class="form-label">대상 수준</label>
+                            <select class="form-select" id="regen_target_level" name="target_level" required>
+                                <option value="">수준을 선택하세요</option>
+                                <option value="beginner">초급 - 기초 개념부터 시작</option>
+                                <option value="intermediate">중급 - 기본 지식 보유자 대상</option>
+                                <option value="advanced">고급 - 전문가 수준</option>
+                                <option value="mixed">혼합 - 다양한 수준 고려</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="regen_session_count" class="form-label">강의 세션 수</label>
+                            <select class="form-select" id="regen_session_count" name="session_count" required>
+                                <option value="">세션 수를 선택하세요</option>
+                                <option value="3">3강 (짧은 과정)</option>
+                                <option value="4" selected>4강 (표준)</option>
+                                <option value="5">5강 (상세한 과정)</option>
+                                <option value="6">6강 (심화 과정)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="regen_session_duration" class="form-label">강의 시간</label>
+                            <select class="form-select" id="regen_session_duration" name="session_duration" required>
+                                <option value="">시간을 선택하세요</option>
+                                <option value="60">60분 (1시간)</option>
+                                <option value="90" selected>90분 (1시간 30분)</option>
+                                <option value="120">120분 (2시간)</option>
+                                <option value="180">180분 (3시간)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="regen_special_focus" class="form-label">특별 강조 사항 (선택사항)</label>
+                        <textarea class="form-control" id="regen_special_focus" name="special_focus" rows="2" 
+                                  placeholder="예: 실무 적용 사례, 최신 트렌드, 윤리적 고려사항 등"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary" id="regenerate-btn">
+                        <i class="fas fa-sync-alt me-2"></i>새 강의안 생성
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</style>
+{% endblock %}

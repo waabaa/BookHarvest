@@ -278,35 +278,59 @@ def generate_lecture(book_id):
         lecture_plan = None
         error_messages = []
         
-        # 1차 시도: 개선된 기본 생성기 (빠른 GPT-3.5)
+        # 1차 시도: Perplexity AI 생성기 (최신 정보 포함)
         try:
-            from lecture_generator import LectureGenerator
-            lecture_generator = LectureGenerator()
-            lecture_plan = lecture_generator.generate_lecture_plan(book_data, lecture_preferences)
+            from perplexity_generator import get_perplexity_generator
+            perplexity_gen = get_perplexity_generator()
             
-            if lecture_plan and not lecture_plan.get('error'):
-                print("✅ 기본 생성기 성공")
-            else:
-                error_messages.append("기본 생성기 실패")
-                lecture_plan = None
+            if perplexity_gen:
+                print("🔄 Perplexity AI 생성기 시도 중...")
+                lecture_plan = perplexity_gen.generate_lecture_plan(book_data, lecture_preferences)
                 
-        except Exception as api_error:
-            error_messages.append(f"기본 생성기 오류: {str(api_error)}")
+                if lecture_plan and not lecture_plan.get('error'):
+                    print("✅ Perplexity AI 생성기 성공")
+                    flash('최신 정보가 포함된 강의안을 생성했습니다!', 'success')
+                else:
+                    error_messages.append("Perplexity AI 생성기 실패")
+                    lecture_plan = None
+            else:
+                error_messages.append("Perplexity AI 초기화 실패")
+                
+        except Exception as perplexity_error:
+            error_messages.append(f"Perplexity AI 오류: {str(perplexity_error)}")
             lecture_plan = None
         
-        # 2차 시도: 대안 생성기들
+        # 2차 시도: 기본 생성기 (OpenAI)
+        if not lecture_plan:
+            try:
+                from lecture_generator import LectureGenerator
+                lecture_generator = LectureGenerator()
+                print("🔄 OpenAI 기본 생성기 시도 중...")
+                lecture_plan = lecture_generator.generate_lecture_plan(book_data, lecture_preferences)
+                
+                if lecture_plan and not lecture_plan.get('error'):
+                    print("✅ OpenAI 기본 생성기 성공")
+                    flash('기본 모드로 강의안을 생성했습니다!', 'success')
+                else:
+                    error_messages.append("OpenAI 기본 생성기 실패")
+                    lecture_plan = None
+                    
+            except Exception as openai_error:
+                error_messages.append(f"OpenAI 기본 생성기 오류: {str(openai_error)}")
+                lecture_plan = None
+        
+        # 3차 시도: 대안 생성기들
         if not lecture_plan:
             try:
                 from alternative_generators import AlternativeLectureGenerator
                 alt_gen = AlternativeLectureGenerator()
                 
-                # OpenAI 간단 모드 시도
                 print("🔄 대안 생성기 시도 중...")
                 lecture_plan = alt_gen.generate_with_openai_simple(book_data, lecture_preferences)
                 
                 if lecture_plan:
                     print("✅ 대안 생성기 성공")
-                    flash('빠른 모드로 강의안을 생성했습니다!', 'success')
+                    flash('간단 모드로 강의안을 생성했습니다!', 'success')
                 else:
                     error_messages.append("대안 생성기도 실패")
                     
@@ -418,7 +442,8 @@ def upload_pdf(book_id):
         if error:
             flash(error, 'error')
         else:
-            flash(f'PDF 파일 "{pdf_attachment.filename}"이 성공적으로 업로드되었습니다.', 'success')
+            filename = pdf_attachment.filename if pdf_attachment else "파일"
+            flash(f'PDF 파일 "{filename}"이 성공적으로 업로드되었습니다.', 'success')
         
     except Exception as e:
         logger.error(f"PDF 업로드 실패: {str(e)}")
