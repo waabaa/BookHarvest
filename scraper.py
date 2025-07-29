@@ -24,9 +24,15 @@ class CommBooksScraper:
         self.images_dir = "static/images/covers"
         os.makedirs(self.images_dir, exist_ok=True)
     
-    def get_page_book_links(self, page_num):
+    def get_page_book_links(self, page_num, series_url=None):
         """Extract all book links from a specific page"""
-        url = f"{self.base_url}/도서-태그/인공지능총서/page/{page_num}/"
+        if series_url:
+            # 시리즈 URL에서 페이지 번호 부분을 변경
+            url = series_url.replace('/page/1/', f'/page/{page_num}/')
+        else:
+            # 기본 AI총서 URL
+            url = f"{self.base_url}/도서-태그/인공지능총서/page/{page_num}/"
+            
         logger.info(f"Scraping page {page_num}: {url}")
         
         try:
@@ -560,10 +566,16 @@ class CommBooksScraper:
             if not job:
                 return
             
+            series_info = f" ({job.series_name})" if job.series_name else ""
+            logger.info(f"Starting scraping job {job_id} for pages {job.start_page}-{job.end_page}{series_info}")
+            
             try:
                 job.status = 'running'
                 job.started_at = datetime.utcnow()
                 db.session.commit()
+                
+                # 시리즈명 추출
+                series_name = job.series_name or "인공지능총서"
                 
                 # Collect all book links first
                 all_book_links = []
@@ -571,7 +583,7 @@ class CommBooksScraper:
                     job.current_page = page_num
                     db.session.commit()
                     
-                    book_links = self.get_page_book_links(page_num)
+                    book_links = self.get_page_book_links(page_num, job.series_url)
                     all_book_links.extend(book_links)
                     
                     # Rate limiting
@@ -585,11 +597,30 @@ class CommBooksScraper:
                     try:
                         book_data = self.scrape_book_details(book_url)
                         if book_data:
-                            saved_book = self.save_book_to_db(book_data)
-                            if saved_book:
+                            # Check if book already exists
+                            existing_book = Book.query.filter_by(book_url=book_url).first()
+                            if not existing_book:
+                                # Save new book
+                                book = Book(
+                                    title=book_data['title'],
+                                    author=book_data.get('author'),
+                                    description=book_data.get('description'),
+                                    review_200=book_data.get('review_200'),
+                                    contents=book_data.get('contents'),
+                                    book_preview=book_data.get('book_preview'),
+                                    publish_date=book_data.get('publish_date'),
+                                    cover_image_path=book_data.get('cover_image_path'),
+                                    book_url=book_url,
+                                    series_name=series_name
+                                )
+                                
+                                db.session.add(book)
+                                db.session.commit()
+                                
                                 job.books_scraped += 1
+                                logger.info(f"Successfully saved book: {book_data['title']} (Series: {series_name})")
                             else:
-                                job.books_failed += 1
+                                logger.info(f"Book already exists: {existing_book.title}")
                         else:
                             job.books_failed += 1
                         
@@ -616,11 +647,13 @@ class CommBooksScraper:
                 job.completed_at = datetime.utcnow()
                 db.session.commit()
 
-def start_scraping_job(start_page, end_page):
+def start_scraping_job(start_page, end_page, series_url=None, series_name=None):
     """Start a new scraping job"""
     job = ScrapingJob()
     job.start_page = start_page
     job.end_page = end_page
+    job.series_url = series_url
+    job.series_name = series_name
     
     db.session.add(job)
     db.session.commit()

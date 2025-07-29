@@ -48,6 +48,13 @@ def start_scraping():
         start_page = int(request.form.get('start_page', 1))
         end_page = int(request.form.get('end_page', 26))
         clear_existing = request.form.get('clear_existing') == 'on'
+        scraping_password = request.form.get('scraping_password', '')
+        series_url = request.form.get('series_url', '').strip()
+        
+        # 스크래핑 비밀번호 확인
+        if scraping_password != '0438':
+            flash('스크래핑 비밀번호가 올바르지 않습니다.', 'error')
+            return redirect(url_for('dashboard'))
         
         if start_page < 1 or end_page < start_page or end_page > 100:
             flash('페이지 범위가 올바르지 않습니다. 1-100 범위로 입력해주세요.', 'error')
@@ -92,9 +99,24 @@ def start_scraping():
                     flash('기존 데이터 삭제 중 오류가 발생했습니다.', 'error')
                     return redirect(url_for('dashboard'))
         
+        # 시리즈명 추출
+        series_name = "인공지능총서"  # 기본값
+        if series_url:
+            try:
+                import urllib.parse
+                parsed_url = urllib.parse.unquote(series_url)
+                if '/도서-태그/' in parsed_url:
+                    series_part = parsed_url.split('/도서-태그/')[1]
+                    series_name = series_part.split('/')[0]
+            except Exception:
+                series_name = "인공지능총서"
+        
         # Start new job
-        job = start_scraping_job(start_page, end_page)
-        flash(f'{start_page}-{end_page}페이지 스크래핑 작업이 시작되었습니다!', 'success')
+        job = start_scraping_job(start_page, end_page, series_url, series_name)
+        if series_url:
+            flash(f'{series_name} 시리즈 {start_page}-{end_page}페이지 스크래핑 작업이 시작되었습니다!', 'success')
+        else:
+            flash(f'{start_page}-{end_page}페이지 스크래핑 작업이 시작되었습니다!', 'success')
         
         return redirect(url_for('dashboard'))
         

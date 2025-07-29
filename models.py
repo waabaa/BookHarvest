@@ -16,6 +16,7 @@ class Book(db.Model):
     cover_image_path = db.Column(String(500))
     book_url = db.Column(String(500), unique=True, nullable=False)
     lecture_plan = db.Column(Text)  # AI 생성 강의안 (JSON 형태)
+    series_name = db.Column(String(300))  # 시리즈명 (예: 인공지능총서, 커뮤니케이션이해총서)
     scraped_at = db.Column(DateTime, default=datetime.utcnow)
     
     def __repr__(self):
@@ -32,6 +33,8 @@ class ScrapingJob(db.Model):
     books_scraped = db.Column(Integer, default=0)
     books_failed = db.Column(Integer, default=0)
     status = db.Column(String(50), default='pending')  # pending, running, completed, failed
+    series_name = db.Column(String(300))  # 시리즈명
+    series_url = db.Column(String(500))   # 시리즈 URL
     started_at = db.Column(DateTime, default=datetime.utcnow)
     completed_at = db.Column(DateTime)
     error_message = db.Column(Text)
