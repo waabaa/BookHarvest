@@ -4,7 +4,8 @@ from openai import OpenAI
 
 class LectureGenerator:
     def __init__(self):
-        self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        self.api_key = os.environ.get("OPENAI_API_KEY")
+        self.client = OpenAI(api_key=self.api_key)
     
     def generate_lecture_plan(self, book_data, lecture_preferences=None):
         """
@@ -25,7 +26,14 @@ class LectureGenerator:
             # 시스템 메시지 생성 (스타일에 따라 조정)
             system_content = self._get_system_content(lecture_preferences)
             
-            # OpenAI API 호출
+            # API 키 확인
+            if not self.api_key:
+                print("OpenAI API 키가 설정되지 않았습니다.")
+                return self._get_fallback_lecture_plan(title, lecture_preferences)
+            
+            print(f"OpenAI API 호출 중... (모델: gpt-4o)")
+            
+            # OpenAI API 호출 (타임아웃 추가)
             response = self.client.chat.completions.create(
                 model="gpt-4o",  # 최신 모델 사용
                 messages=[
@@ -34,11 +42,13 @@ class LectureGenerator:
                 ],
                 response_format={"type": "json_object"},
                 temperature=0.7,
-                max_tokens=3000
+                max_tokens=3000,
+                timeout=30  # 30초 타임아웃
             )
             
             # 응답 파싱
             lecture_plan = json.loads(response.choices[0].message.content)
+            print("강의안 생성 완료!")
             
             # 사용자 선택사항을 강의안에 추가
             if lecture_preferences:
@@ -46,9 +56,30 @@ class LectureGenerator:
             
             return lecture_plan
             
+        except json.JSONDecodeError as e:
+            print(f"JSON 파싱 오류: {str(e)}")
+            return self._get_fallback_lecture_plan(title, lecture_preferences)
         except Exception as e:
-            print(f"강의안 생성 중 오류 발생: {str(e)}")
-            return self._get_fallback_lecture_plan(book_data.get('title', ''), lecture_preferences)
+            error_msg = str(e)
+            print(f"강의안 생성 중 오류 발생: {error_msg}")
+            
+            # 다양한 오류 유형에 따른 구체적인 메시지
+            if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+                print("⚠️ OpenAI API 응답 시간 초과. 네트워크 연결을 확인해주세요.")
+            elif "api_key" in error_msg.lower() or "unauthorized" in error_msg.lower():
+                print("⚠️ OpenAI API 키가 유효하지 않습니다. API 키를 확인해주세요.")
+            elif "rate_limit" in error_msg.lower():
+                print("⚠️ API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요.")
+            elif "connection" in error_msg.lower() or "network" in error_msg.lower():
+                print("⚠️ 네트워크 연결 문제가 발생했습니다. 인터넷 연결을 확인해주세요.")
+            else:
+                print(f"⚠️ 예상치 못한 오류: {error_msg}")
+            
+            return {
+                'error': True,
+                'error_message': f'강의안 생성 실패: {error_msg}',
+                'fallback_plan': self._get_fallback_lecture_plan(title, lecture_preferences)
+            }
     
     def _create_lecture_prompt(self, title, author, description, contents, book_preview, review_200, lecture_preferences=None):
         """강의안 생성을 위한 프롬프트를 만듭니다."""

@@ -230,6 +230,18 @@ def generate_lecture(book_id):
         lecture_generator = LectureGenerator()
         lecture_plan = lecture_generator.generate_lecture_plan(book_data, lecture_preferences)
         
+        # Check if lecture plan generation was successful
+        if not lecture_plan or lecture_plan.get('error'):
+            # Show specific error message based on the problem
+            error_msg = lecture_plan.get('error_message', '알 수 없는 오류가 발생했습니다.')
+            if 'timeout' in error_msg.lower() or 'network' in error_msg.lower():
+                flash('네트워크 연결 문제로 강의안 생성에 실패했습니다. 잠시 후 다시 시도해주세요.', 'warning')
+            elif 'api_key' in error_msg.lower() or 'unauthorized' in error_msg.lower():
+                flash('OpenAI API 설정에 문제가 있습니다. 관리자에게 문의해주세요.', 'warning')
+            else:
+                flash(f'강의안 생성 중 문제가 발생했습니다: {error_msg}', 'warning')
+            return redirect(url_for('book_detail', book_id=book_id))
+        
         # Save the lecture plan to database (keep history by timestamping)
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
@@ -260,12 +272,22 @@ def generate_lecture(book_id):
         book.lecture_plan = json.dumps(lecture_plan, ensure_ascii=False, indent=2)
         db.session.commit()
         
-        flash('AI 강의안이 성공적으로 생성되었습니다!', 'success')
+        flash('AI 강의안이 성공적으로 생성되었습니다! 아래에서 확인해보세요.', 'success')
         logger.info(f"Generated lecture plan for book: {book.title}")
         
     except Exception as e:
-        logger.error(f"Error generating lecture plan for book {book_id}: {str(e)}")
-        flash('강의안 생성 중 오류가 발생했습니다.', 'error')
+        error_msg = str(e)
+        logger.error(f"Error generating lecture plan for book {book_id}: {error_msg}")
+        
+        # Provide user-friendly error messages
+        if 'timeout' in error_msg.lower() or 'timed out' in error_msg.lower():
+            flash('네트워크 연결 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.', 'warning')
+        elif 'api_key' in error_msg.lower() or 'unauthorized' in error_msg.lower():
+            flash('AI 서비스 인증에 문제가 있습니다. 관리자에게 문의해주세요.', 'warning')
+        elif 'connection' in error_msg.lower():
+            flash('인터넷 연결에 문제가 있습니다. 연결 상태를 확인 후 다시 시도해주세요.', 'warning')
+        else:
+            flash('강의안 생성 중 예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error')
     
     return redirect(url_for('book_detail', book_id=book_id))
 
