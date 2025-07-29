@@ -3,6 +3,7 @@ from app import app, db
 from models import Book, ScrapingJob
 from scraper import start_scraping_job
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -37,27 +38,92 @@ def start_scraping():
     try:
         start_page = int(request.form.get('start_page', 1))
         end_page = int(request.form.get('end_page', 26))
+        clear_existing = request.form.get('clear_existing') == 'on'
         
         if start_page < 1 or end_page < start_page or end_page > 100:
-            flash('Invalid page range. Please enter valid pages (1-100).', 'error')
+            flash('페이지 범위가 올바르지 않습니다. 1-100 범위로 입력해주세요.', 'error')
             return redirect(url_for('dashboard'))
         
         # Check if there's already a running job
         running_job = ScrapingJob.query.filter_by(status='running').first()
         if running_job:
-            flash('A scraping job is already running. Please wait for it to complete.', 'warning')
+            flash('이미 실행 중인 스크래핑 작업이 있습니다. 완료될 때까지 기다려주세요.', 'warning')
             return redirect(url_for('dashboard'))
+        
+        # Clear existing data if requested
+        if clear_existing:
+            try:
+                # Delete all books and their images
+                books = Book.query.all()
+                deleted_count = 0
+                for book in books:
+                    if book.cover_image_path:
+                        # Remove image file
+                        image_path = os.path.join('static', book.cover_image_path)
+                        if os.path.exists(image_path):
+                            os.remove(image_path)
+                    db.session.delete(book)
+                    deleted_count += 1
+                
+                # Delete all scraping jobs
+                ScrapingJob.query.delete()
+                
+                db.session.commit()
+                flash(f'기존 데이터 {deleted_count}권의 책과 모든 작업 기록이 삭제되었습니다.', 'info')
+                logger.info(f"Cleared {deleted_count} books and all jobs")
+                
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Error clearing existing data: {str(e)}")
+                flash('기존 데이터 삭제 중 오류가 발생했습니다.', 'error')
+                return redirect(url_for('dashboard'))
         
         # Start new job
         job = start_scraping_job(start_page, end_page)
-        flash(f'Scraping job started for pages {start_page}-{end_page}!', 'success')
+        flash(f'{start_page}-{end_page}페이지 스크래핑 작업이 시작되었습니다!', 'success')
         
         return redirect(url_for('dashboard'))
         
     except Exception as e:
         logger.error(f"Error starting scraping job: {str(e)}")
-        flash(f'Error starting scraping job: {str(e)}', 'error')
+        flash(f'스크래핑 작업 시작 중 오류 발생: {str(e)}', 'error')
         return redirect(url_for('dashboard'))
+
+@app.route('/clear_all_data', methods=['POST'])
+def clear_all_data():
+    """Clear all scraped data and jobs"""
+    try:
+        # Check if there's a running job
+        running_job = ScrapingJob.query.filter_by(status='running').first()
+        if running_job:
+            flash('실행 중인 스크래핑 작업이 있어 데이터를 삭제할 수 없습니다.', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Delete all books and their images
+        books = Book.query.all()
+        deleted_count = 0
+        for book in books:
+            if book.cover_image_path:
+                # Remove image file
+                image_path = os.path.join('static', book.cover_image_path)
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+            db.session.delete(book)
+            deleted_count += 1
+        
+        # Delete all scraping jobs
+        ScrapingJob.query.delete()
+        
+        db.session.commit()
+        flash(f'모든 데이터가 삭제되었습니다. ({deleted_count}권의 책과 모든 작업 기록)', 'success')
+        logger.info(f"Cleared all data: {deleted_count} books and all jobs")
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error clearing all data: {str(e)}")
+        flash('데이터 삭제 중 오류가 발생했습니다.', 'error')
+    
+    return redirect(url_for('dashboard'))
 
 @app.route('/api/job_status/<int:job_id>')
 def job_status(job_id):

@@ -76,7 +76,7 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-play me-2"></i>Start New Scraping Job
+                    <i class="fas fa-play me-2"></i>새 스크래핑 작업 시작
                 </h5>
             </div>
             <div class="card-body">
@@ -84,25 +84,49 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="start_page" class="form-label">Start Page</label>
+                                <label for="start_page" class="form-label">시작 페이지</label>
                                 <input type="number" class="form-control" id="start_page" name="start_page" 
                                        value="1" min="1" max="100" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="end_page" class="form-label">End Page</label>
+                                <label for="end_page" class="form-label">끝 페이지</label>
                                 <input type="number" class="form-control" id="end_page" name="end_page" 
                                        value="26" min="1" max="100" required>
                             </div>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary" {% if running_jobs > 0 %}disabled{% endif %}>
-                        <i class="fas fa-play me-2"></i>Start Scraping
-                    </button>
+                    
+                    {% if total_books > 0 %}
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="clear_existing" name="clear_existing">
+                        <label class="form-check-label" for="clear_existing">
+                            <i class="fas fa-trash text-warning me-1"></i> 
+                            기존 데이터 삭제 후 새로 시작 (현재 {{ total_books }}권의 책이 저장되어 있습니다)
+                        </label>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" {% if running_jobs > 0 %}disabled{% endif %}>
+                            <i class="fas fa-play me-2"></i>스크래핑 시작
+                        </button>
+                        
+                        {% if total_books > 0 %}
+                        <button type="button" class="btn btn-outline-danger" onclick="confirmClearData()" {% if running_jobs > 0 %}disabled{% endif %}>
+                            <i class="fas fa-trash me-2"></i>모든 데이터 삭제
+                        </button>
+                        
+                        <!-- Hidden form for clear all data -->
+                        <form id="clearDataForm" method="POST" action="{{ url_for('clear_all_data') }}" style="display: none;">
+                        </form>
+                        {% endif %}
+                    </div>
+                    
                     {% if running_jobs > 0 %}
                         <small class="text-muted d-block mt-2">
-                            A scraping job is currently running. Please wait for it to complete.
+                            스크래핑 작업이 실행 중입니다. 완료될 때까지 기다려주세요.
                         </small>
                     {% endif %}
                 </form>
@@ -248,5 +272,12 @@ setInterval(function() {
             });
     }
 }, 5000);
+
+// Confirm data clearing
+function confirmClearData() {
+    if (confirm('정말로 모든 스크래핑 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.\n- 모든 책 정보\n- 모든 책 표지 이미지\n- 모든 스크래핑 작업 기록')) {
+        document.getElementById('clearDataForm').submit();
+    }
+}
 </script>
 {% endblock %}
