@@ -11,6 +11,20 @@ class PPTGenerator:
         # Set slide size to widescreen (16:9)
         self.prs.slide_width = Inches(13.33)
         self.prs.slide_height = Inches(7.5)
+        
+        # Define color scheme for modern design
+        self.colors = {
+            'primary': RGBColor(41, 128, 185),      # Blue
+            'secondary': RGBColor(52, 73, 94),      # Dark Blue-Gray
+            'accent': RGBColor(231, 76, 60),        # Red
+            'success': RGBColor(46, 204, 113),      # Green
+            'warning': RGBColor(241, 196, 15),      # Yellow
+            'info': RGBColor(155, 89, 182),         # Purple
+            'light': RGBColor(236, 240, 241),       # Light Gray
+            'dark': RGBColor(44, 62, 80),           # Dark
+            'white': RGBColor(255, 255, 255),       # White
+            'text': RGBColor(33, 37, 41)            # Dark Text
+        }
     
     def generate_lecture_ppt(self, book_data, lecture_plan_json):
         """
@@ -66,6 +80,9 @@ class PPTGenerator:
         
         subtitle.text = "\n".join(subtitle_text)
         
+        # Add modern background
+        self._add_slide_background(slide, 'white')
+        
         # Style title
         self._style_title(title)
         self._style_subtitle(subtitle)
@@ -74,6 +91,9 @@ class PPTGenerator:
         """강의 개요 슬라이드 생성"""
         slide_layout = self.prs.slide_layouts[1]  # Title and content layout
         slide = self.prs.slides.add_slide(slide_layout)
+        
+        # Add colorful background
+        self._add_slide_background(slide, 'light')
         
         title = slide.shapes.title
         title.text = "강의 개요"
@@ -89,6 +109,7 @@ class PPTGenerator:
             p = tf.paragraphs[0]
             p.text = overview['description']
             p.font.size = Pt(18)
+            p.font.color.rgb = self.colors['text']
             
         # Learning objectives
         if overview.get('learning_objectives'):
@@ -248,16 +269,39 @@ class PPTGenerator:
                     p.level = 1
     
     def _style_title(self, title_shape):
-        """제목 스타일 설정"""
-        title_shape.text_frame.paragraphs[0].font.size = Pt(32)
-        title_shape.text_frame.paragraphs[0].font.bold = True
-        title_shape.text_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+        """제목 스타일 설정 - 모던하고 컬러풀하게"""
+        try:
+            for paragraph in title_shape.text_frame.paragraphs:
+                paragraph.alignment = PP_ALIGN.CENTER
+                for run in paragraph.runs:
+                    run.font.size = Pt(36)
+                    run.font.bold = True
+                    run.font.color.rgb = self.colors['primary']
+        except:
+            # 기본 스타일링
+            try:
+                title_shape.text_frame.paragraphs[0].font.size = Pt(36)
+                title_shape.text_frame.paragraphs[0].font.bold = True
+                title_shape.text_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+            except:
+                pass
     
     def _style_subtitle(self, subtitle_shape):
-        """부제목 스타일 설정"""
-        for paragraph in subtitle_shape.text_frame.paragraphs:
-            paragraph.font.size = Pt(18)
-            paragraph.alignment = PP_ALIGN.CENTER
+        """부제목 스타일 설정 - 현대적 디자인"""
+        try:
+            for paragraph in subtitle_shape.text_frame.paragraphs:
+                paragraph.alignment = PP_ALIGN.CENTER
+                for run in paragraph.runs:
+                    run.font.size = Pt(18)
+                    run.font.color.rgb = self.colors['secondary']
+        except:
+            # 기본 스타일링
+            try:
+                for paragraph in subtitle_shape.text_frame.paragraphs:
+                    paragraph.font.size = Pt(18)
+                    paragraph.alignment = PP_ALIGN.CENTER
+            except:
+                pass
     
     def save_ppt(self, filename):
         """PPT 파일 저장"""
@@ -269,3 +313,38 @@ class PPTGenerator:
         except Exception as e:
             print(f"PPT 저장 중 오류 발생: {str(e)}")
             return False
+    
+    def save(self, filepath):
+        """PPT 파일 저장 (호환성을 위한 별칭)"""
+        return self.save_ppt(filepath)
+    
+    def _add_slide_background(self, slide, color_name='light'):
+        """슬라이드 배경 색상 추가"""
+        try:
+            background = slide.background
+            fill = background.fill
+            fill.solid()
+            fill.fore_color.rgb = self.colors[color_name]
+        except:
+            pass  # 배경 설정 실패시 무시
+    
+    def _style_heading(self, text_frame, color_name='primary'):
+        """제목 텍스트 스타일링"""
+        try:
+            for paragraph in text_frame.paragraphs:
+                for run in paragraph.runs:
+                    run.font.size = Pt(32)
+                    run.font.bold = True
+                    run.font.color.rgb = self.colors[color_name]
+        except:
+            pass
+    
+    def _style_content(self, text_frame, color_name='text'):
+        """내용 텍스트 스타일링"""
+        try:
+            for paragraph in text_frame.paragraphs:
+                for run in paragraph.runs:
+                    run.font.size = Pt(16)
+                    run.font.color.rgb = self.colors[color_name]
+        except:
+            pass

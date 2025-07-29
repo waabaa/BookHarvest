@@ -100,7 +100,11 @@ class LectureGenerator:
 3. {style_description} 강의 스타일로 구성
 4. {level_description} 적절한 난이도 설정
 5. 단계별 학습 목표 제시
-{f'6. 특별 강조사항: {lecture_preferences.get("special_focus", "")}' if lecture_preferences and lecture_preferences.get("special_focus") else ""}
+6. 각 강의의 outline은 최소 5-7개의 세부 섹션으로 구성
+7. 각 섹션마다 구체적인 내용, 활동, 시간 배분을 상세히 포함
+8. 실무 예제, 실습 과제, 토론 주제를 풍부하게 제시
+9. 각 강의마다 핵심 개념 5-7개, 활동 3-5개를 포함
+{f'10. 특별 강조사항: {lecture_preferences.get("special_focus", "")}' if lecture_preferences and lecture_preferences.get("special_focus") else ""}
 
 **JSON 형식:**
 {{
@@ -120,12 +124,24 @@ class LectureGenerator:
       "outline": [
         {{
           "section": "섹션명",
-          "content": "구체적 내용",
-          "time": "30분"
+          "content": "구체적 내용 설명 (상세하고 실무적으로)",
+          "activities": "실습 또는 토론 활동",
+          "materials": "필요한 자료나 도구",
+          "time": "시간 배분"
+        }},
+        {{
+          "section": "다음 섹션명",
+          "content": "더 구체적인 내용",
+          "activities": "관련 활동",
+          "materials": "필요 자료",
+          "time": "시간"
         }}
       ],
-      "key_concepts": ["핵심개념1", "핵심개념2"],
-      "activities": ["실습활동1", "토론주제1"]
+      "key_concepts": ["핵심개념1", "핵심개념2", "핵심개념3", "핵심개념4", "핵심개념5"],
+      "activities": ["실습활동1", "토론주제1", "과제1", "발표1", "팀프로젝트1"],
+      "homework": ["과제 내용"],
+      "reading_materials": ["추천 읽기 자료"],
+      "practical_examples": ["실무 예제1", "실무 예제2"]
     }}
   ],
   "assessment": {{

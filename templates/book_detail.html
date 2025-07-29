@@ -269,27 +269,86 @@
                             {% endif %}
                             
                             {% if lecture.outline %}
-                            <div class="lecture-outline">
+                            <div class="lecture-outline mb-3">
                                 <small class="text-muted"><strong>구성:</strong></small>
-                                <div class="row mt-1">
+                                <div class="border-start border-primary border-3 ps-3 mt-2">
                                     {% for section in lecture.outline %}
-                                    <div class="col-md-4 mb-1">
-                                        <small>
-                                            <strong>{{ section.section }}</strong> ({{ section.time }})<br>
-                                            <span class="text-muted">{{ section.content }}</span>
-                                        </small>
+                                    <div class="p-2 mb-2 bg-light rounded border">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <strong class="text-dark">{{ section.section }}</strong>
+                                            {% if section.time %}<span class="badge bg-primary">{{ section.time }}</span>{% endif %}
+                                        </div>
+                                        {% if section.content %}
+                                            <div class="text-muted small mb-1"><i class="fas fa-info-circle me-1"></i>{{ section.content }}</div>
+                                        {% endif %}
+                                        {% if section.activities %}
+                                            <div class="text-success small mb-1"><i class="fas fa-tasks me-1"></i><strong>활동:</strong> {{ section.activities }}</div>
+                                        {% endif %}
+                                        {% if section.materials %}
+                                            <div class="text-info small"><i class="fas fa-tools me-1"></i><strong>준비물:</strong> {{ section.materials }}</div>
+                                        {% endif %}
                                     </div>
                                     {% endfor %}
                                 </div>
                             </div>
                             {% endif %}
                             
-                            {% if lecture.key_concepts %}
-                            <div class="mt-2">
-                                <small class="text-muted"><strong>핵심 개념:</strong></small>
-                                {% for concept in lecture.key_concepts %}
-                                <span class="badge bg-secondary me-1">{{ concept }}</span>
-                                {% endfor %}
+                            <div class="row">
+                                {% if lecture.key_concepts %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-success"><strong><i class="fas fa-lightbulb me-1"></i>핵심 개념:</strong></small><br>
+                                    {% for concept in lecture.key_concepts %}
+                                    <span class="badge bg-success me-1 mb-1">{{ concept }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                
+                                {% if lecture.activities %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-warning"><strong><i class="fas fa-play-circle me-1"></i>활동:</strong></small><br>
+                                    {% for activity in lecture.activities %}
+                                    <span class="badge bg-warning text-dark me-1 mb-1">{{ activity }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if lecture.homework or lecture.reading_materials or lecture.practical_examples %}
+                            <div class="mt-2 p-2 bg-light rounded border">
+                                <div class="row">
+                                    {% if lecture.homework %}
+                                    <div class="col-md-4">
+                                        <small class="text-danger"><strong><i class="fas fa-edit me-1"></i>과제:</strong></small>
+                                        <ul class="list-unstyled mb-0">
+                                            {% for hw in lecture.homework %}
+                                            <li class="small">• {{ hw }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if lecture.reading_materials %}
+                                    <div class="col-md-4">
+                                        <small class="text-info"><strong><i class="fas fa-book me-1"></i>읽기 자료:</strong></small>
+                                        <ul class="list-unstyled mb-0">
+                                            {% for material in lecture.reading_materials %}
+                                            <li class="small">• {{ material }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if lecture.practical_examples %}
+                                    <div class="col-md-4">
+                                        <small class="text-secondary"><strong><i class="fas fa-code me-1"></i>실무 예제:</strong></small>
+                                        <ul class="list-unstyled mb-0">
+                                            {% for example in lecture.practical_examples %}
+                                            <li class="small">• {{ example }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
                             </div>
                             {% endif %}
                         </div>
@@ -473,29 +532,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Handle regenerate lecture button
-    const regenerateForm = document.getElementById('regenerate-lecture-form');
-    const regenerateBtn = document.getElementById('regenerate-btn');
+    // Handle modal regenerate lecture button
+    const modalRegenerateForm = document.getElementById('regenerate-lecture-form');
+    const modalRegenerateBtn = document.getElementById('regenerate-btn');
     
-    if (regenerateForm && regenerateBtn) {
-        regenerateForm.addEventListener('submit', function(e) {
+    if (modalRegenerateForm && modalRegenerateBtn) {
+        modalRegenerateForm.addEventListener('submit', function(e) {
             // Show loading state
-            regenerateBtn.disabled = true;
-            regenerateBtn.classList.add('loading-btn');
-            regenerateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>새 강의안 생성 중...';
-        });
-    }
-    
-    // Handle regenerate lecture button
-    const regenerateForm = document.getElementById('regenerate-lecture-form');
-    const regenerateBtn = document.getElementById('regenerate-btn');
-    
-    if (regenerateForm && regenerateBtn) {
-        regenerateForm.addEventListener('submit', function(e) {
-            // Show loading state
-            regenerateBtn.disabled = true;
-            regenerateBtn.classList.add('loading-btn');
-            regenerateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>새 강의안 생성 중...';
+            modalRegenerateBtn.disabled = true;
+            modalRegenerateBtn.classList.add('loading-btn');
+            modalRegenerateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>새 강의안 생성 중...';
         });
     }
 });

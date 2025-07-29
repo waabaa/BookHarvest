@@ -8,6 +8,24 @@ This is a Flask-based web scraper application designed to extract book informati
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (2025-07-29)
+
+✓ 사용자 맞춤형 강의안 스타일 선택 기능 완전 구현:
+- 6가지 강의 스타일 (이론/실습/토론/사례연구/워크숍/세미나형)
+- 대상 수준 설정 (초급/중급/고급/혼합)
+- 강의 세션 수 및 시간 조정 가능
+- 특별 강조사항 입력 기능
+- AI가 선택 옵션에 맞게 강의안 내용과 구성을 자동 조정
+
+✓ 시각적 개선사항:
+- 첫 페이지 책표지가 전체적으로 보이도록 개선 (object-fit: contain 적용)
+- 강의 구성 내용을 3배 수준으로 상세화 (섹션별 활동, 준비물, 과제, 읽기자료, 실무예제 추가)
+- PPT 디자인을 컬러풀하게 개선 (기본 흰배경+검정글씨에서 다양한 색상 적용)
+
+✓ 기술적 수정:
+- JavaScript 중복 선언 오류 해결
+- 강의안 템플릿 레이아웃 개선 (아이콘, 색상 구분, 시각적 계층 구조 강화)
+
 ## System Architecture
 
 ### Backend Architecture
