@@ -150,11 +150,14 @@
                                     <label for="session_count" class="form-label">강의 세션 수</label>
                                     <select class="form-select" id="session_count" name="session_count" required>
                                         <option value="">세션 수를 선택하세요</option>
-                                        <option value="3">3강 (짧은 과정)</option>
-                                        <option value="4" selected>4강 (표준)</option>
-                                        <option value="5">5강 (상세한 과정)</option>
-                                        <option value="6">6강 (심화 과정)</option>
+                                        <option value="3">3강 (빠른 생성)</option>
+                                        <option value="4" selected>4강 (권장)</option>
+                                        <option value="5">5강 (시간 소요)</option>
+                                        <option value="6">6강 (긴 처리 시간)</option>
                                     </select>
+                                    <div class="form-text text-muted small">
+                                        <i class="fas fa-info-circle me-1"></i>세션 수가 많을수록 생성 시간이 오래 걸립니다
+                                    </div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="session_duration" class="form-label">강의 시간</label>

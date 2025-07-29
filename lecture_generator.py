@@ -43,7 +43,7 @@ class LectureGenerator:
                 response_format={"type": "json_object"},
                 temperature=0.7,
                 max_tokens=4000,  # 더 상세한 내용을 위해 토큰 수 증가
-                timeout=60  # 더 긴 응답을 위해 타임아웃 증가
+                timeout=120  # 긴 강의안 생성을 위해 2분으로 증가
             )
             
             # 응답 파싱
@@ -65,18 +65,27 @@ class LectureGenerator:
             
             # 다양한 오류 유형에 따른 구체적인 메시지
             if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
-                print("⚠️ OpenAI API 응답 시간 초과. 네트워크 연결을 확인해주세요.")
+                print("⚠️ OpenAI API 응답 시간 초과. 강의 세션 수를 줄이거나 잠시 후 다시 시도해주세요.")
+                error_type = "timeout"
             elif "api_key" in error_msg.lower() or "unauthorized" in error_msg.lower():
                 print("⚠️ OpenAI API 키가 유효하지 않습니다. API 키를 확인해주세요.")
+                error_type = "api_key"
             elif "rate_limit" in error_msg.lower():
                 print("⚠️ API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요.")
+                error_type = "rate_limit"
             elif "connection" in error_msg.lower() or "network" in error_msg.lower():
                 print("⚠️ 네트워크 연결 문제가 발생했습니다. 인터넷 연결을 확인해주세요.")
+                error_type = "connection"
+            elif "ssl" in error_msg.lower() or "recv" in error_msg.lower():
+                print("⚠️ 보안 연결 문제가 발생했습니다. 잠시 후 다시 시도해주세요.")
+                error_type = "ssl"
             else:
                 print(f"⚠️ 예상치 못한 오류: {error_msg}")
+                error_type = "unknown"
             
             return {
                 'error': True,
+                'error_type': error_type,
                 'error_message': f'강의안 생성 실패: {error_msg}',
                 'fallback_plan': self._get_fallback_lecture_plan(title, lecture_preferences)
             }

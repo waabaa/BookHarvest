@@ -226,20 +226,54 @@ def generate_lecture(book_id):
         # Remove empty values
         lecture_preferences = {k: v for k, v in lecture_preferences.items() if v}
         
-        # Generate lecture plan using AI with user preferences
+        # Generate lecture plan using AI with user preferences (with better error handling)
         lecture_generator = LectureGenerator()
-        lecture_plan = lecture_generator.generate_lecture_plan(book_data, lecture_preferences)
+        
+        # 긴 강의안 생성을 위한 특별 처리
+        session_count = int(lecture_preferences.get('session_count', 3))
+        if session_count > 4:
+            flash(f'{session_count}강 강의안을 생성 중입니다. 시간이 다소 걸릴 수 있습니다...', 'info')
+        
+        try:
+            lecture_plan = lecture_generator.generate_lecture_plan(book_data, lecture_preferences)
+        except Exception as api_error:
+            logger.error(f"Lecture generation API error: {str(api_error)}")
+            # 더 상세한 오류 정보 제공
+            if "timeout" in str(api_error).lower() or "timed out" in str(api_error).lower():
+                flash('강의안 생성 시간이 초과되었습니다. 강의 세션 수를 줄이거나 잠시 후 다시 시도해주세요.', 'warning')
+            elif "connection" in str(api_error).lower() or "network" in str(api_error).lower():
+                flash('네트워크 연결에 문제가 있습니다. 잠시 후 다시 시도해주세요.', 'warning')
+            else:
+                flash('AI 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.', 'warning')
+            return redirect(url_for('book_detail', book_id=book_id))
         
         # Check if lecture plan generation was successful
         if not lecture_plan or lecture_plan.get('error'):
-            # Show specific error message based on the problem
-            error_msg = lecture_plan.get('error_message', '알 수 없는 오류가 발생했습니다.')
-            if 'timeout' in error_msg.lower() or 'network' in error_msg.lower():
-                flash('네트워크 연결 문제로 강의안 생성에 실패했습니다. 잠시 후 다시 시도해주세요.', 'warning')
-            elif 'api_key' in error_msg.lower() or 'unauthorized' in error_msg.lower():
-                flash('OpenAI API 설정에 문제가 있습니다. 관리자에게 문의해주세요.', 'warning')
+            # Show specific error message based on the error type
+            error_type = lecture_plan.get('error_type', 'unknown')
+            
+            if error_type == 'timeout':
+                flash('강의안 생성 시간이 초과되었습니다. 강의 세션 수를 줄이거나 잠시 후 다시 시도해주세요.', 'warning')
+            elif error_type == 'api_key':
+                flash('AI 서비스 인증에 문제가 있습니다. 관리자에게 문의해주세요.', 'warning')
+            elif error_type == 'rate_limit':
+                flash('현재 많은 사용자가 동시에 이용 중입니다. 잠시 후 다시 시도해주세요.', 'warning')
+            elif error_type == 'connection' or error_type == 'ssl':
+                flash('네트워크 연결에 일시적인 문제가 있습니다. 잠시 후 다시 시도해주세요.', 'warning')
             else:
-                flash(f'강의안 생성 중 문제가 발생했습니다: {error_msg}', 'warning')
+                flash('AI 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.', 'warning')
+            
+            # 대체 강의안이 있으면 그것을 사용
+            if lecture_plan and lecture_plan.get('fallback_plan'):
+                fallback_plan = lecture_plan['fallback_plan']
+                fallback_plan['generated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                fallback_plan['is_fallback'] = True
+                
+                book.lecture_plan = json.dumps(fallback_plan, ensure_ascii=False, indent=2)
+                db.session.commit()
+                
+                flash('기본 강의안을 제공합니다. AI 서비스 복구 후 다시 생성해보세요.', 'info')
+            
             return redirect(url_for('book_detail', book_id=book_id))
         
         # Save the lecture plan to database (keep history by timestamping)
