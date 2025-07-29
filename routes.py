@@ -55,33 +55,38 @@ def start_scraping():
             flash('이미 실행 중인 스크래핑 작업이 있습니다. 완료될 때까지 기다려주세요.', 'warning')
             return redirect(url_for('dashboard'))
         
-        # Clear existing data if requested
+        # Clear existing data if requested (with password check)
         if clear_existing:
-            try:
-                # Delete all books and their images
-                books = Book.query.all()
-                deleted_count = 0
-                for book in books:
-                    if book.cover_image_path:
-                        # Remove image file
-                        image_path = os.path.join('static', book.cover_image_path)
-                        if os.path.exists(image_path):
-                            os.remove(image_path)
-                    db.session.delete(book)
-                    deleted_count += 1
+            # 비밀번호 확인
+            clear_password = request.form.get('clear_password', '')
+            if clear_password != '0438':
+                flash('기존 데이터 삭제 비밀번호가 올바르지 않습니다. 스크래핑을 계속 진행합니다.', 'warning')
+            else:
+                try:
+                    # Delete all books and their images
+                    books = Book.query.all()
+                    deleted_count = 0
+                    for book in books:
+                        if book.cover_image_path:
+                            # Remove image file
+                            image_path = os.path.join('static', book.cover_image_path)
+                            if os.path.exists(image_path):
+                                os.remove(image_path)
+                        db.session.delete(book)
+                        deleted_count += 1
+                    
+                    # Delete all scraping jobs
+                    ScrapingJob.query.delete()
                 
-                # Delete all scraping jobs
-                ScrapingJob.query.delete()
-                
-                db.session.commit()
-                flash(f'기존 데이터 {deleted_count}권의 책과 모든 작업 기록이 삭제되었습니다.', 'info')
-                logger.info(f"Cleared {deleted_count} books and all jobs")
-                
-            except Exception as e:
-                db.session.rollback()
-                logger.error(f"Error clearing existing data: {str(e)}")
-                flash('기존 데이터 삭제 중 오류가 발생했습니다.', 'error')
-                return redirect(url_for('dashboard'))
+                    db.session.commit()
+                    flash(f'기존 데이터 {deleted_count}권의 책과 모든 작업 기록이 삭제되었습니다.', 'info')
+                    logger.info(f"Cleared {deleted_count} books and all jobs")
+                    
+                except Exception as e:
+                    db.session.rollback()
+                    logger.error(f"Error clearing existing data: {str(e)}")
+                    flash('기존 데이터 삭제 중 오류가 발생했습니다.', 'error')
+                    return redirect(url_for('dashboard'))
         
         # Start new job
         job = start_scraping_job(start_page, end_page)
@@ -96,8 +101,14 @@ def start_scraping():
 
 @app.route('/clear_all_data', methods=['POST'])
 def clear_all_data():
-    """Clear all scraped data and jobs"""
+    """Clear all scraped data and jobs with password protection"""
     try:
+        # 비밀번호 확인
+        password = request.form.get('password', '')
+        if password != '0438':
+            flash('비밀번호가 올바르지 않습니다. 데이터 삭제가 취소되었습니다.', 'error')
+            return redirect(url_for('dashboard'))
+        
         # Check if there's a running job
         running_job = ScrapingJob.query.filter_by(status='running').first()
         if running_job:
