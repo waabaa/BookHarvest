@@ -19,7 +19,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h4 class="card-title">{{ total_books }}</h4>
-                        <p class="card-text">Total Books</p>
+                        <p class="card-text">총 수집된 책</p>
                     </div>
                     <i class="fas fa-book fa-2x"></i>
                 </div>
@@ -33,7 +33,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h4 class="card-title">{{ completed_jobs }}</h4>
-                        <p class="card-text">Completed Jobs</p>
+                        <p class="card-text">완료된 작업</p>
                     </div>
                     <i class="fas fa-check-circle fa-2x"></i>
                 </div>
@@ -47,7 +47,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h4 class="card-title">{{ running_jobs }}</h4>
-                        <p class="card-text">Running Jobs</p>
+                        <p class="card-text">실행 중인 작업</p>
                     </div>
                     <i class="fas fa-spinner fa-2x"></i>
                 </div>
@@ -61,7 +61,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h4 class="card-title">{{ failed_jobs }}</h4>
-                        <p class="card-text">Failed Jobs</p>
+                        <p class="card-text">실패한 작업</p>
                     </div>
                     <i class="fas fa-exclamation-triangle fa-2x"></i>
                 </div>
@@ -117,10 +117,6 @@
                         <button type="button" class="btn btn-outline-danger" onclick="confirmClearData()" {% if running_jobs > 0 %}disabled{% endif %}>
                             <i class="fas fa-trash me-2"></i>모든 데이터 삭제
                         </button>
-                        
-                        <!-- Hidden form for clear all data -->
-                        <form id="clearDataForm" method="POST" action="{{ url_for('clear_all_data') }}" style="display: none;">
-                        </form>
                         {% endif %}
                     </div>
                     
@@ -139,25 +135,25 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-info-circle me-2"></i>Latest Job Status
+                    <i class="fas fa-info-circle me-2"></i>최신 작업 상태
                 </h5>
             </div>
             <div class="card-body" id="job-status">
                 {% if latest_job %}
                     <div class="job-info" data-job-id="{{ latest_job.id }}">
-                        <p><strong>Status:</strong> 
+                        <p><strong>상태:</strong> 
                             <span class="badge bg-{{ 'success' if latest_job.status == 'completed' else 'warning' if latest_job.status == 'running' else 'danger' if latest_job.status == 'failed' else 'secondary' }}">
-                                {{ latest_job.status.title() }}
+                                {{ {'completed': '완료', 'running': '실행중', 'failed': '실패', 'pending': '대기중'}[latest_job.status] or latest_job.status.title() }}
                             </span>
                         </p>
-                        <p><strong>Pages:</strong> {{ latest_job.start_page }} - {{ latest_job.end_page }}</p>
+                        <p><strong>페이지 범위:</strong> {{ latest_job.start_page }} - {{ latest_job.end_page }}</p>
                         {% if latest_job.status == 'running' %}
-                            <p><strong>Current Page:</strong> <span id="current-page">{{ latest_job.current_page }}</span></p>
+                            <p><strong>현재 페이지:</strong> <span id="current-page">{{ latest_job.current_page }}</span></p>
                         {% endif %}
-                        <p><strong>Books Found:</strong> <span id="books-found">{{ latest_job.total_books_found or 0 }}</span></p>
-                        <p><strong>Books Scraped:</strong> <span id="books-scraped">{{ latest_job.books_scraped }}</span></p>
+                        <p><strong>발견된 책:</strong> <span id="books-found">{{ latest_job.total_books_found or 0 }}</span>권</p>
+                        <p><strong>수집 완료:</strong> <span id="books-scraped">{{ latest_job.books_scraped }}</span>권</p>
                         {% if latest_job.books_failed > 0 %}
-                            <p><strong>Books Failed:</strong> <span id="books-failed">{{ latest_job.books_failed }}</span></p>
+                            <p><strong>수집 실패:</strong> <span id="books-failed">{{ latest_job.books_failed }}</span>권</p>
                         {% endif %}
                         
                         {% if latest_job.status == 'running' and latest_job.total_books_found > 0 %}
@@ -170,7 +166,7 @@
                         {% endif %}
                     </div>
                 {% else %}
-                    <p class="text-muted">No scraping jobs have been started yet.</p>
+                    <p class="text-muted">아직 시작된 스크래핑 작업이 없습니다.</p>
                 {% endif %}
             </div>
         </div>
@@ -184,7 +180,7 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-book me-2"></i>Recently Scraped Books
+                    <i class="fas fa-book me-2"></i>최근 수집된 책
                 </h5>
             </div>
             <div class="card-body">
@@ -210,7 +206,7 @@
                                     <p class="card-text">{{ book.description[:100] }}{% if book.description|length > 100 %}...{% endif %}</p>
                                 {% endif %}
                                 <a href="{{ url_for('book_detail', book_id=book.id) }}" class="btn btn-sm btn-outline-primary">
-                                    View Details
+                                    자세히 보기
                                 </a>
                             </div>
                         </div>
@@ -220,7 +216,7 @@
                 
                 <div class="text-center mt-3">
                     <a href="{{ url_for('books_list') }}" class="btn btn-primary">
-                        <i class="fas fa-eye me-2"></i>View All Books
+                        <i class="fas fa-eye me-2"></i>모든 책 보기
                     </a>
                 </div>
             </div>
@@ -232,8 +228,10 @@
 
 {% block scripts %}
 <script>
+let lastJobStatus = null;
+
 // Auto-refresh job status every 5 seconds
-setInterval(function() {
+function updateJobStatus() {
     const jobInfo = document.querySelector('.job-info');
     if (jobInfo) {
         const jobId = jobInfo.dataset.jobId;
@@ -262,21 +260,41 @@ setInterval(function() {
                         progressBar.style.width = percentage + '%';
                         progressBar.textContent = percentage + '%';
                     }
-                } else if (data.status === 'completed' || data.status === 'failed') {
-                    // Reload page when job is completed
-                    location.reload();
+                    lastJobStatus = 'running';
+                } else if ((data.status === 'completed' || data.status === 'failed') && lastJobStatus === 'running') {
+                    // Only reload if status changed from running to completed/failed
+                    lastJobStatus = data.status;
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000); // Delay reload slightly
                 }
             })
             .catch(error => {
                 console.error('Error fetching job status:', error);
             });
     }
-}, 5000);
+}
 
-// Confirm data clearing
+// Start updating job status
+setInterval(updateJobStatus, 5000);
+
+// Confirm data clearing with better UI
 function confirmClearData() {
-    if (confirm('정말로 모든 스크래핑 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.\n- 모든 책 정보\n- 모든 책 표지 이미지\n- 모든 스크래핑 작업 기록')) {
-        document.getElementById('clearDataForm').submit();
+    // Create a more professional confirmation modal using Bootstrap's native confirm
+    const confirmed = confirm('🗑️ 모든 스크래핑 데이터 삭제\n\n정말로 모든 데이터를 삭제하시겠습니까?\n\n❌ 이 작업은 되돌릴 수 없습니다:\n• 모든 책 정보 ({{ total_books }}권)\n• 모든 책 표지 이미지\n• 모든 스크래핑 작업 기록\n\n계속하려면 확인을 클릭하세요.');
+    
+    if (confirmed) {
+        // Disable the button to prevent double-clicking
+        const button = event.target;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>삭제 중...';
+        
+        // Create and submit form dynamically
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("clear_all_data") }}';
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 </script>
