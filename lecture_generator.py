@@ -6,9 +6,9 @@ class LectureGenerator:
     def __init__(self):
         self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     
-    def generate_lecture_plan(self, book_data):
+    def generate_lecture_plan(self, book_data, lecture_preferences=None):
         """
-        책 정보를 바탕으로 3-4강 분량의 강의안을 생성합니다.
+        책 정보와 사용자 선택사항을 바탕으로 강의안을 생성합니다.
         """
         try:
             # 책 정보 준비
@@ -19,34 +19,72 @@ class LectureGenerator:
             book_preview = book_data.get('book_preview', '')
             review_200 = book_data.get('review_200', '')
             
-            # 프롬프트 생성
-            prompt = self._create_lecture_prompt(title, author, description, contents, book_preview, review_200)
+            # 프롬프트 생성 (사용자 선택사항 포함)
+            prompt = self._create_lecture_prompt(title, author, description, contents, book_preview, review_200, lecture_preferences)
+            
+            # 시스템 메시지 생성 (스타일에 따라 조정)
+            system_content = self._get_system_content(lecture_preferences)
             
             # OpenAI API 호출
             response = self.client.chat.completions.create(
                 model="gpt-4o",  # 최신 모델 사용
                 messages=[
-                    {"role": "system", "content": "당신은 전문적인 강의 설계 전문가입니다. 주어진 책 정보를 바탕으로 체계적이고 실용적인 강의안을 만드는 것이 목표입니다."},
+                    {"role": "system", "content": system_content},
                     {"role": "user", "content": prompt}
                 ],
                 response_format={"type": "json_object"},
                 temperature=0.7,
-                max_tokens=2000
+                max_tokens=3000
             )
             
             # 응답 파싱
             lecture_plan = json.loads(response.choices[0].message.content)
+            
+            # 사용자 선택사항을 강의안에 추가
+            if lecture_preferences:
+                lecture_plan['user_preferences'] = lecture_preferences
+            
             return lecture_plan
             
         except Exception as e:
             print(f"강의안 생성 중 오류 발생: {str(e)}")
-            return self._get_fallback_lecture_plan(book_data.get('title', ''))
+            return self._get_fallback_lecture_plan(book_data.get('title', ''), lecture_preferences)
     
-    def _create_lecture_prompt(self, title, author, description, contents, book_preview, review_200):
+    def _create_lecture_prompt(self, title, author, description, contents, book_preview, review_200, lecture_preferences=None):
         """강의안 생성을 위한 프롬프트를 만듭니다."""
         
+        # 사용자 선택사항에 따른 요구사항 조정
+        session_count = "3-4강"
+        session_duration = "60-90분"
+        style_description = ""
+        level_description = ""
+        
+        if lecture_preferences:
+            session_count = f"{lecture_preferences.get('session_count', '4')}강"
+            session_duration = f"{lecture_preferences.get('session_duration', '90')}분"
+            
+            # 스타일에 따른 설명
+            style_map = {
+                'theoretical': '이론 중심으로 개념과 원리를 깊이 있게 다루며',
+                'practical': '실습과 실무 사례를 중심으로 하여',
+                'discussion': '상호작용과 토론을 활발히 활용하며',
+                'case_study': '실제 사례 분석을 통해 학습하며',
+                'workshop': '참여형 활동과 그룹 작업을 중심으로',
+                'seminar': '발표와 질의응답을 중심으로'
+            }
+            style_description = style_map.get(lecture_preferences.get('lecture_style', ''), '')
+            
+            # 수준에 따른 설명
+            level_map = {
+                'beginner': '초보자도 이해할 수 있도록 기초부터 설명하며',
+                'intermediate': '기본 지식을 보유한 학습자를 대상으로',
+                'advanced': '전문가 수준의 깊이 있는 내용으로',
+                'mixed': '다양한 수준의 학습자를 고려하여'
+            }
+            level_description = level_map.get(lecture_preferences.get('target_level', ''), '')
+        
         prompt = f"""
-다음 책 정보를 바탕으로 3-4강 분량의 체계적인 강의안을 JSON 형식으로 작성해주세요.
+다음 책 정보를 바탕으로 {session_count} 분량의 체계적인 강의안을 JSON 형식으로 작성해주세요.
 
 **책 정보:**
 - 제목: {title}
@@ -57,11 +95,12 @@ class LectureGenerator:
 - 200자평: {review_200}
 
 **요구사항:**
-1. 3-4강으로 구성된 강의 계획
-2. 각 강의는 60-90분 분량
-3. 실무에 적용 가능한 내용 포함
-4. 이론과 실습의 균형 유지
+1. {session_count}으로 구성된 강의 계획
+2. 각 강의는 {session_duration} 분량
+3. {style_description} 강의 스타일로 구성
+4. {level_description} 적절한 난이도 설정
 5. 단계별 학습 목표 제시
+{f'6. 특별 강조사항: {lecture_preferences.get("special_focus", "")}' if lecture_preferences and lecture_preferences.get("special_focus") else ""}
 
 **JSON 형식:**
 {{
@@ -103,47 +142,97 @@ class LectureGenerator:
 """
         return prompt
     
-    def _get_fallback_lecture_plan(self, title):
+    def _get_system_content(self, lecture_preferences):
+        """사용자 선택사항에 따른 시스템 메시지를 생성합니다."""
+        base_content = "당신은 전문적인 강의 설계 전문가입니다. 주어진 책 정보를 바탕으로 체계적이고 실용적인 강의안을 만드는 것이 목표입니다."
+        
+        if not lecture_preferences:
+            return base_content
+        
+        style_instructions = {
+            'theoretical': " 이론적 배경과 개념 설명을 중시하며, 학문적 깊이를 추구하는 강의를 설계하세요.",
+            'practical': " 실무 적용과 실습 활동을 중심으로 하는 실용적인 강의를 설계하세요.",
+            'discussion': " 학습자 간 상호작용과 토론을 활발히 유도하는 참여형 강의를 설계하세요.",
+            'case_study': " 실제 사례 분석과 문제 해결 중심의 강의를 설계하세요.",
+            'workshop': " 그룹 활동과 협업 프로젝트를 중심으로 하는 워크숍형 강의를 설계하세요.",
+            'seminar': " 발표와 질의응답, 학술적 토론을 중심으로 하는 세미나형 강의를 설계하세요."
+        }
+        
+        level_instructions = {
+            'beginner': " 초보자도 쉽게 따라할 수 있도록 단계별로 친절하게 설명하세요.",
+            'intermediate': " 기본 지식을 가진 학습자에게 적절한 도전과 발전을 제공하세요.",
+            'advanced': " 전문가 수준의 심화된 내용과 고급 기법을 다루세요.",
+            'mixed': " 다양한 수준의 학습자를 모두 고려한 차별화된 학습 경험을 제공하세요."
+        }
+        
+        style = lecture_preferences.get('lecture_style', '')
+        level = lecture_preferences.get('target_level', '')
+        
+        additional_content = ""
+        if style in style_instructions:
+            additional_content += style_instructions[style]
+        if level in level_instructions:
+            additional_content += level_instructions[level]
+        
+        return base_content + additional_content
+    
+    def _get_fallback_lecture_plan(self, title, lecture_preferences=None):
         """API 호출 실패시 사용할 기본 강의안"""
-        return {
+        
+        # 사용자 선택사항 적용
+        session_count = 3
+        session_duration = "2시간"
+        total_duration = "총 6시간"
+        
+        if lecture_preferences:
+            session_count = int(lecture_preferences.get('session_count', 3))
+            duration_minutes = int(lecture_preferences.get('session_duration', 120))
+            session_duration = f"{duration_minutes}분"
+            total_duration = f"총 {duration_minutes * session_count // 60}시간"
+        
+        # 기본 강의 구성
+        lectures = []
+        for i in range(session_count):
+            lecture = {
+                "lecture_number": i + 1,
+                "title": f"{i + 1}강: 기본 주제 {i + 1}",
+                "duration": session_duration,
+                "objectives": ["기본 개념 이해", "실무 적용"],
+                "outline": [
+                    {
+                        "section": "도입",
+                        "content": "주제 소개 및 학습 목표",
+                        "time": "20분"
+                    },
+                    {
+                        "section": "핵심 내용",
+                        "content": "주요 내용 설명",
+                        "time": f"{duration_minutes - 40}분"
+                    },
+                    {
+                        "section": "정리",
+                        "content": "요약 및 다음 강의 예고",
+                        "time": "20분"
+                    }
+                ],
+                "key_concepts": ["핵심개념1", "핵심개념2"],
+                "activities": ["학습 활동", "질의응답"]
+            }
+            lectures.append(lecture)
+        
+        fallback_plan = {
             "lecture_overview": {
                 "title": f"{title} 심화 과정",
                 "description": "책 내용을 바탕으로 한 체계적인 학습 과정입니다.",
                 "target_audience": "관련 분야 학습자",
-                "duration": "총 6시간 (3강)",
+                "duration": f"{total_duration} ({session_count}강)",
                 "learning_objectives": [
                     "책의 핵심 개념 이해",
                     "실무 적용 방법 습득",
                     "심화 학습 방향 설정"
                 ]
             },
-            "lectures": [
-                {
-                    "lecture_number": 1,
-                    "title": "기초 개념과 이론",
-                    "duration": "2시간",
-                    "objectives": ["기본 개념 이해", "이론적 배경 학습"],
-                    "outline": [
-                        {
-                            "section": "도입",
-                            "content": "주제 소개 및 학습 목표",
-                            "time": "20분"
-                        },
-                        {
-                            "section": "핵심 이론",
-                            "content": "책의 주요 이론 설명",
-                            "time": "80분"
-                        },
-                        {
-                            "section": "정리",
-                            "content": "요약 및 다음 강의 예고",
-                            "time": "20분"
-                        }
-                    ],
-                    "key_concepts": ["핵심개념1", "핵심개념2"],
-                    "activities": ["개념 정리", "질의응답"]
-                }
-            ],
+            "lectures": lectures,
             "assessment": {
                 "methods": ["과제 평가", "참여도 평가"],
                 "criteria": "이해도와 참여도를 종합 평가"
@@ -153,3 +242,9 @@ class LectureGenerator:
                 "recommended": ["관련 참고 자료"]
             }
         }
+        
+        # 사용자 선택사항 추가
+        if lecture_preferences:
+            fallback_plan['user_preferences'] = lecture_preferences
+        
+        return fallback_plan

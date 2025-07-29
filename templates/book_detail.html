@@ -120,10 +120,63 @@
                         <i class="fas fa-robot fa-3x text-muted mb-3"></i>
                         <h5>AI 강의안이 아직 생성되지 않았습니다</h5>
                         <p class="text-muted mb-4">책 내용을 바탕으로 3-4강 분량의 체계적인 강의안을 AI로 자동 생성할 수 있습니다.</p>
-                        <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" class="d-inline" id="generate-lecture-form">
-                            <button type="submit" class="btn btn-primary btn-lg" id="generate-btn">
-                                <i class="fas fa-magic me-2"></i>AI 강의안 생성하기
-                            </button>
+                        <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" id="generate-lecture-form">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="lecture_style" class="form-label">강의 스타일</label>
+                                    <select class="form-select" id="lecture_style" name="lecture_style" required>
+                                        <option value="">스타일을 선택하세요</option>
+                                        <option value="theoretical">이론 중심형 - 개념과 원리 깊이 있게 학습</option>
+                                        <option value="practical">실습 중심형 - 실무 사례와 예제 중심</option>
+                                        <option value="discussion">토론 중심형 - 상호작용과 토론 기반</option>
+                                        <option value="case_study">사례 연구형 - 실제 사례 분석 중심</option>
+                                        <option value="workshop">워크숍형 - 참여형 활동과 그룹 작업</option>
+                                        <option value="seminar">세미나형 - 발표와 질의응답 중심</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="target_level" class="form-label">대상 수준</label>
+                                    <select class="form-select" id="target_level" name="target_level" required>
+                                        <option value="">수준을 선택하세요</option>
+                                        <option value="beginner">초급 - 기초 개념부터 시작</option>
+                                        <option value="intermediate">중급 - 기본 지식 보유자 대상</option>
+                                        <option value="advanced">고급 - 전문가 수준</option>
+                                        <option value="mixed">혼합 - 다양한 수준 고려</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="session_count" class="form-label">강의 세션 수</label>
+                                    <select class="form-select" id="session_count" name="session_count" required>
+                                        <option value="">세션 수를 선택하세요</option>
+                                        <option value="3">3강 (짧은 과정)</option>
+                                        <option value="4" selected>4강 (표준)</option>
+                                        <option value="5">5강 (상세한 과정)</option>
+                                        <option value="6">6강 (심화 과정)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="session_duration" class="form-label">강의 시간</label>
+                                    <select class="form-select" id="session_duration" name="session_duration" required>
+                                        <option value="">시간을 선택하세요</option>
+                                        <option value="60">60분 (1시간)</option>
+                                        <option value="90" selected>90분 (1시간 30분)</option>
+                                        <option value="120">120분 (2시간)</option>
+                                        <option value="180">180분 (3시간)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="special_focus" class="form-label">특별 강조 사항 (선택사항)</label>
+                                <textarea class="form-control" id="special_focus" name="special_focus" rows="2" 
+                                          placeholder="예: 실무 적용 사례, 최신 트렌드, 윤리적 고려사항 등"></textarea>
+                            </div>
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-primary btn-lg" id="generate-btn">
+                                    <i class="fas fa-magic me-2"></i>맞춤형 AI 강의안 생성하기
+                                </button>
+                            </div>
                         </form>
                     </div>
                 {% else %}
@@ -145,6 +198,39 @@
                             <div class="col-md-4">
                                 <p><strong>대상:</strong> {{ lecture_plan.lecture_overview.target_audience }}</p>
                                 <p><strong>총 시간:</strong> {{ lecture_plan.lecture_overview.duration }}</p>
+                                
+                                {% if lecture_plan.user_preferences %}
+                                <hr class="my-2">
+                                <small class="text-muted">
+                                    <strong>설정된 옵션:</strong><br>
+                                    {% if lecture_plan.user_preferences.lecture_style %}
+                                        {% set style_names = {
+                                            'theoretical': '이론 중심형',
+                                            'practical': '실습 중심형', 
+                                            'discussion': '토론 중심형',
+                                            'case_study': '사례 연구형',
+                                            'workshop': '워크숍형',
+                                            'seminar': '세미나형'
+                                        } %}
+                                        스타일: {{ style_names.get(lecture_plan.user_preferences.lecture_style, lecture_plan.user_preferences.lecture_style) }}<br>
+                                    {% endif %}
+                                    {% if lecture_plan.user_preferences.target_level %}
+                                        {% set level_names = {
+                                            'beginner': '초급',
+                                            'intermediate': '중급', 
+                                            'advanced': '고급',
+                                            'mixed': '혼합'
+                                        } %}
+                                        수준: {{ level_names.get(lecture_plan.user_preferences.target_level, lecture_plan.user_preferences.target_level) }}<br>
+                                    {% endif %}
+                                    {% if lecture_plan.user_preferences.session_count %}
+                                        세션: {{ lecture_plan.user_preferences.session_count }}강<br>
+                                    {% endif %}
+                                    {% if lecture_plan.user_preferences.session_duration %}
+                                        시간: {{ lecture_plan.user_preferences.session_duration }}분<br>
+                                    {% endif %}
+                                </small>
+                                {% endif %}
                             </div>
                         </div>
                         
@@ -258,11 +344,9 @@
                     
                     <!-- Regenerate Button -->
                     <div class="text-center mt-4 pt-3 border-top">
-                        <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" class="d-inline" id="regenerate-lecture-form">
-                            <button type="submit" class="btn btn-outline-primary" id="regenerate-btn">
-                                <i class="fas fa-sync-alt me-2"></i>강의안 재생성
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#regenerateLectureModal">
+                            <i class="fas fa-sync-alt me-2"></i>강의안 재생성
+                        </button>
                         <div class="mt-3">
                             <a href="{{ url_for('download_lecture_ppt', book_id=book.id) }}" class="btn btn-success me-2">
                                 <i class="fas fa-download me-2"></i>PPT 다운로드
@@ -401,7 +485,93 @@ document.addEventListener('DOMContentLoaded', function() {
             regenerateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>새 강의안 생성 중...';
         });
     }
+    
+    // Handle regenerate lecture button
+    const regenerateForm = document.getElementById('regenerate-lecture-form');
+    const regenerateBtn = document.getElementById('regenerate-btn');
+    
+    if (regenerateForm && regenerateBtn) {
+        regenerateForm.addEventListener('submit', function(e) {
+            // Show loading state
+            regenerateBtn.disabled = true;
+            regenerateBtn.classList.add('loading-btn');
+            regenerateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>새 강의안 생성 중...';
+        });
+    }
 });
 </script>
+
+<!-- Regenerate Lecture Modal -->
+<div class="modal fade" id="regenerateLectureModal" tabindex="-1" aria-labelledby="regenerateLectureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="regenerateLectureModalLabel">새로운 강의안 생성</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" id="regenerate-lecture-form">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="regen_lecture_style" class="form-label">강의 스타일</label>
+                            <select class="form-select" id="regen_lecture_style" name="lecture_style" required>
+                                <option value="">스타일을 선택하세요</option>
+                                <option value="theoretical">이론 중심형 - 개념과 원리 깊이 있게 학습</option>
+                                <option value="practical">실습 중심형 - 실무 사례와 예제 중심</option>
+                                <option value="discussion">토론 중심형 - 상호작용과 토론 기반</option>
+                                <option value="case_study">사례 연구형 - 실제 사례 분석 중심</option>
+                                <option value="workshop">워크숍형 - 참여형 활동과 그룹 작업</option>
+                                <option value="seminar">세미나형 - 발표와 질의응답 중심</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="regen_target_level" class="form-label">대상 수준</label>
+                            <select class="form-select" id="regen_target_level" name="target_level" required>
+                                <option value="">수준을 선택하세요</option>
+                                <option value="beginner">초급 - 기초 개념부터 시작</option>
+                                <option value="intermediate">중급 - 기본 지식 보유자 대상</option>
+                                <option value="advanced">고급 - 전문가 수준</option>
+                                <option value="mixed">혼합 - 다양한 수준 고려</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="regen_session_count" class="form-label">강의 세션 수</label>
+                            <select class="form-select" id="regen_session_count" name="session_count" required>
+                                <option value="">세션 수를 선택하세요</option>
+                                <option value="3">3강 (짧은 과정)</option>
+                                <option value="4" selected>4강 (표준)</option>
+                                <option value="5">5강 (상세한 과정)</option>
+                                <option value="6">6강 (심화 과정)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="regen_session_duration" class="form-label">강의 시간</label>
+                            <select class="form-select" id="regen_session_duration" name="session_duration" required>
+                                <option value="">시간을 선택하세요</option>
+                                <option value="60">60분 (1시간)</option>
+                                <option value="90" selected>90분 (1시간 30분)</option>
+                                <option value="120">120분 (2시간)</option>
+                                <option value="180">180분 (3시간)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="regen_special_focus" class="form-label">특별 강조 사항 (선택사항)</label>
+                        <textarea class="form-control" id="regen_special_focus" name="special_focus" rows="2" 
+                                  placeholder="예: 실무 적용 사례, 최신 트렌드, 윤리적 고려사항 등"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary" id="regenerate-btn">
+                        <i class="fas fa-sync-alt me-2"></i>새 강의안 생성
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 </style>
 {% endblock %}

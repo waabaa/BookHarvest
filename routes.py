@@ -214,9 +214,21 @@ def generate_lecture(book_id):
             'review_200': book.review_200
         }
         
-        # Generate lecture plan using AI
+        # Get user preferences from form
+        lecture_preferences = {
+            'lecture_style': request.form.get('lecture_style'),
+            'target_level': request.form.get('target_level'),
+            'session_count': request.form.get('session_count'),
+            'session_duration': request.form.get('session_duration'),
+            'special_focus': request.form.get('special_focus', '').strip()
+        }
+        
+        # Remove empty values
+        lecture_preferences = {k: v for k, v in lecture_preferences.items() if v}
+        
+        # Generate lecture plan using AI with user preferences
         lecture_generator = LectureGenerator()
-        lecture_plan = lecture_generator.generate_lecture_plan(book_data)
+        lecture_plan = lecture_generator.generate_lecture_plan(book_data, lecture_preferences)
         
         # Save the lecture plan to database (keep history by timestamping)
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
