@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import time
 import os
 import logging
+import re
 from urllib.parse import urljoin, urlparse
 from PIL import Image
 import io
@@ -56,6 +57,112 @@ class CommBooksScraper:
             logger.error(f"Error scraping page {page_num}: {str(e)}")
             return []
     
+    def clean_text(self, text):
+        """Clean extracted text by removing unwanted patterns"""
+        if not text:
+            return ""
+        
+        # Remove common unwanted patterns specific to CommBooks
+        unwanted_patterns = [
+            r'읽기구매선택하세요.*?책소개',
+            r'정보발행일.*?원',
+            r'ISBN\(.*?\).*?원',
+            r'분류컴북스.*?총서\??',
+            r'열람서비스.*?중지',
+            r'구매.*?선택하세요',
+            r'\d+원\s*$',
+            r'^\d+\s*',  # Leading numbers
+            r'쪽수\s*\d+\s*쪽',
+            r'판형\s*\d+\*\d+mm',
+            r'ISBN\([^)]+\)\s*\d+\s*\d+원',
+            r'지은이.*?책소개',
+            r'발행일.*?쪽수',
+            r'구매.*?원',
+            r'컴북스.*?총서',
+            r'\d{13}\s*\d+\s*\d+원',  # ISBN patterns
+            r'05500\s*\d+원',
+            r'04500\s*\d+원',
+            r'045009800원',
+            r'210\*297mm',
+            r'128\*188mm',
+        ]
+        
+        cleaned_text = text
+        for pattern in unwanted_patterns:
+            cleaned_text = re.sub(pattern, '', cleaned_text, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Remove extra whitespace and normalize
+        cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+        
+        return cleaned_text
+    
+    def extract_section_content(self, soup, section_title):
+        """Extract content from a specific section by title - improved for CommBooks"""
+        try:
+            # Find all text nodes containing the section title
+            section_headers = soup.find_all(string=lambda text: text and section_title in str(text))
+            
+            for header in section_headers:
+                # Find the parent element containing the header
+                parent = header.parent
+                if not parent:
+                    continue
+                
+                # Start with the parent and look for content in various ways
+                content_candidates = []
+                
+                # Method 1: Look for next sibling elements
+                current = parent
+                while current:
+                    next_sibling = current.find_next_sibling()
+                    if next_sibling:
+                        content_text = next_sibling.get_text(separator=' ', strip=True)
+                        if content_text and len(content_text) > 20:
+                            content_candidates.append(content_text)
+                            break
+                    current = current.parent
+                
+                # Method 2: Look for content in the same container
+                container = parent
+                for i in range(3):  # Go up max 3 levels
+                    container = container.parent if container.parent else container
+                    if container:
+                        # Find all text after our header
+                        all_text = container.get_text(separator=' ', strip=True)
+                        header_pos = all_text.find(section_title)
+                        if header_pos >= 0:
+                            after_header = all_text[header_pos + len(section_title):]
+                            # Stop at next section header
+                            next_sections = ['지은이', '책소개', '200자평', '차례', '책속으로', '발행일', '정보']
+                            for next_section in next_sections:
+                                if next_section != section_title and next_section in after_header:
+                                    section_end = after_header.find(next_section)
+                                    after_header = after_header[:section_end]
+                                    break
+                            if after_header and len(after_header) > 20:
+                                content_candidates.append(after_header)
+                
+                # Method 3: Look for content in nearby div/p elements
+                nearby_elements = parent.find_next_siblings(['div', 'p', 'span'])[:3]
+                for element in nearby_elements:
+                    element_text = element.get_text(separator=' ', strip=True)
+                    if element_text and len(element_text) > 20:
+                        content_candidates.append(element_text)
+                
+                # Choose the best candidate
+                for candidate in content_candidates:
+                    cleaned_text = self.clean_text(candidate)
+                    # Ensure content doesn't contain our section title and is substantial
+                    if (len(cleaned_text) > 10 and 
+                        section_title not in cleaned_text and
+                        not cleaned_text.startswith(section_title)):
+                        return cleaned_text
+            
+            return ""
+        except Exception as e:
+            logger.error(f"Error extracting {section_title}: {str(e)}")
+            return ""
+
     def scrape_book_details(self, book_url):
         """Scrape detailed information from a single book page"""
         logger.info(f"Scraping book details: {book_url}")
@@ -78,166 +185,109 @@ class CommBooksScraper:
                 'cover_image_path': ''
             }
             
-            # Extract title
-            title_element = soup.find('h1') or soup.find('title')
-            if title_element:
-                book_data['title'] = title_element.get_text(strip=True)
-            
-            # Extract author - look for common patterns
-            author_selectors = [
-                'span:contains("지은이")',
-                '.author',
-                '[class*="author"]',
-                'p:contains("지은이")'
+            # Extract title - look for h1 or page title
+            title_candidates = [
+                soup.find('h1', class_=lambda x: x and 'title' in x.lower()),
+                soup.find('h1'),
+                soup.find('title')
             ]
             
-            for selector in author_selectors:
-                try:
-                    if ':contains(' in selector:
-                        # Handle contains pseudo-selector manually
-                        elements = soup.find_all(string=lambda text: text and "지은이" in str(text))
-                        if elements:
-                            parent = elements[0].parent
-                            if parent:
-                                book_data['author'] = parent.get_text(strip=True).replace('지은이', '').strip()
-                                break
-                    else:
-                        author_element = soup.select_one(selector)
-                        if author_element:
-                            book_data['author'] = author_element.get_text(strip=True)
-                            break
-                except:
-                    continue
+            for title_element in title_candidates:
+                if title_element:
+                    title_text = title_element.get_text(strip=True)
+                    # Remove site name and other noise
+                    title_text = re.sub(r'\s*-\s*CommBooks.*$', '', title_text)
+                    title_text = re.sub(r'\s*\|\s*CommBooks.*$', '', title_text)
+                    book_data['title'] = title_text.strip()
+                    if book_data['title']:
+                        break
+            
+            # Extract author
+            author_text = self.extract_section_content(soup, "지은이")
+            if author_text:
+                # Remove "지은이" label and clean
+                author_text = re.sub(r'^지은이[:\s]*', '', author_text)
+                book_data['author'] = author_text.strip()
             
             # Extract description/introduction
-            desc_selectors = [
-                '.book-intro',
-                '.description',
-                '[class*="intro"]',
-                '[class*="description"]'
-            ]
-            
-            for selector in desc_selectors:
-                desc_element = soup.select_one(selector)
-                if desc_element:
-                    book_data['description'] = desc_element.get_text(strip=True)
-                    break
+            desc_text = self.extract_section_content(soup, "책소개")
+            if not desc_text:
+                desc_text = self.extract_section_content(soup, "소개")
+            if desc_text:
+                book_data['description'] = desc_text
             
             # Extract 200자평
-            review_selectors = [
-                'div:contains("200자평")',
-                '.review-200',
-                '[class*="review"]'
-            ]
-            
-            for selector in review_selectors:
-                try:
-                    if ':contains(' in selector:
-                        elements = soup.find_all(string=lambda text: text and "200자평" in str(text))
-                        if elements:
-                            parent = elements[0].parent
-                            if parent:
-                                book_data['review_200'] = parent.get_text(strip=True)
-                                break
-                    else:
-                        review_element = soup.select_one(selector)
-                        if review_element:
-                            book_data['review_200'] = review_element.get_text(strip=True)
-                            break
-                except:
-                    continue
+            review_text = self.extract_section_content(soup, "200자평")
+            if review_text:
+                book_data['review_200'] = review_text
             
             # Extract contents (차례)
-            contents_selectors = [
-                'div:contains("차례")',
-                '.contents',
-                '.table-of-contents'
-            ]
-            
-            for selector in contents_selectors:
-                try:
-                    if ':contains(' in selector:
-                        elements = soup.find_all(string=lambda text: text and "차례" in str(text))
-                        if elements:
-                            parent = elements[0].parent
-                            if parent:
-                                book_data['contents'] = parent.get_text(strip=True)
-                                break
-                    else:
-                        contents_element = soup.select_one(selector)
-                        if contents_element:
-                            book_data['contents'] = contents_element.get_text(strip=True)
-                            break
-                except:
-                    continue
+            contents_text = self.extract_section_content(soup, "차례")
+            if contents_text:
+                # Remove page numbers and clean up formatting
+                contents_text = re.sub(r'\d+\s*$', '', contents_text, flags=re.MULTILINE)
+                contents_text = re.sub(r'^\d+\s*', '', contents_text, flags=re.MULTILINE)
+                book_data['contents'] = contents_text.strip()
             
             # Extract book preview (책속으로)
-            preview_selectors = [
-                'div:contains("책속으로")',
-                '.book-preview',
-                '[class*="preview"]'
-            ]
-            
-            for selector in preview_selectors:
-                try:
-                    if ':contains(' in selector:
-                        elements = soup.find_all(string=lambda text: text and "책속으로" in str(text))
-                        if elements:
-                            parent = elements[0].parent
-                            if parent:
-                                book_data['book_preview'] = parent.get_text(strip=True)
-                                break
-                    else:
-                        preview_element = soup.select_one(selector)
-                        if preview_element:
-                            book_data['book_preview'] = preview_element.get_text(strip=True)
-                            break
-                except:
-                    continue
+            preview_text = self.extract_section_content(soup, "책속으로")
+            if not preview_text:
+                preview_text = self.extract_section_content(soup, "책 브리핑")
+            if preview_text:
+                book_data['book_preview'] = preview_text
             
             # Extract publish date
-            date_selectors = [
-                'span:contains("발행일")',
-                '.publish-date',
-                '[class*="date"]'
-            ]
+            date_text = self.extract_section_content(soup, "발행일")
+            if date_text:
+                # Extract just the date, remove extra text
+                date_match = re.search(r'(\d{4}년?\s*\d{1,2}월?\s*\d{1,2}일?)', date_text)
+                if date_match:
+                    book_data['publish_date'] = date_match.group(1)
+                else:
+                    book_data['publish_date'] = re.sub(r'발행일[:\s]*', '', date_text).strip()
             
-            for selector in date_selectors:
-                try:
-                    if ':contains(' in selector:
-                        elements = soup.find_all(string=lambda text: text and "발행일" in str(text))
-                        if elements:
-                            parent = elements[0].parent
-                            if parent:
-                                book_data['publish_date'] = parent.get_text(strip=True).replace('발행일', '').strip()
-                                break
-                    else:
-                        date_element = soup.select_one(selector)
-                        if date_element:
-                            book_data['publish_date'] = date_element.get_text(strip=True)
-                            break
-                except:
-                    continue
-            
-            # Extract and download cover image
+            # Extract and download cover image - improve selectors for CommBooks
             img_selectors = [
+                'img[alt*="표지"]',
+                'img[alt*="cover"]',
                 '.book-cover img',
                 '.cover img',
-                'img[alt*="표지"]',
                 'img[src*="cover"]',
-                'img'
+                '.product-image img',
+                '.main-image img',
+                'article img',
+                '.content img'
             ]
             
             for selector in img_selectors:
-                img_element = soup.select_one(selector)
-                if img_element:
-                    src = img_element.get('src')
-                    if src and isinstance(src, str):
-                        img_url = urljoin(book_url, src)
-                        image_path = self.download_image(img_url, book_data['title'])
-                        if image_path:
-                            book_data['cover_image_path'] = image_path
-                            break
+                img_elements = soup.select(selector)
+                for img_element in img_elements:
+                    if img_element:
+                        src = img_element.get('src')
+                        if src and isinstance(src, str):
+                            # Skip small icons and navigation images
+                            if any(skip in src.lower() for skip in ['icon', 'logo', 'nav', 'menu', 'btn']):
+                                continue
+                            
+                            # Check image dimensions if available
+                            width = img_element.get('width')
+                            height = img_element.get('height')
+                            if width and height:
+                                try:
+                                    w, h = int(width), int(height)
+                                    if w < 50 or h < 50:  # Skip tiny images
+                                        continue
+                                except:
+                                    pass
+                            
+                            img_url = urljoin(book_url, src)
+                            image_path = self.download_image(img_url, book_data['title'])
+                            if image_path:
+                                book_data['cover_image_path'] = image_path
+                                break
+                
+                if book_data['cover_image_path']:
+                    break
             
             return book_data
             
@@ -248,15 +298,31 @@ class CommBooksScraper:
     def download_image(self, img_url, book_title):
         """Download and save book cover image"""
         try:
-            response = self.session.get(img_url, timeout=10)
+            # Check if it's a valid image URL
+            if not img_url or 'data:' in img_url or len(img_url) < 10:
+                return None
+            
+            response = self.session.get(img_url, timeout=15)
             response.raise_for_status()
             
-            # Create filename from book title
-            safe_title = "".join(c for c in book_title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            # Check if it's actually an image
+            content_type = response.headers.get('content-type', '')
+            if not any(img_type in content_type.lower() for img_type in ['image', 'jpeg', 'jpg', 'png', 'webp']):
+                logger.warning(f"Not an image: {img_url} (content-type: {content_type})")
+                return None
+            
+            # Check image size (avoid downloading tiny images)
+            content_length = response.headers.get('content-length')
+            if content_length and int(content_length) < 1000:  # Less than 1KB
+                logger.warning(f"Image too small: {img_url}")
+                return None
+            
+            # Create safe filename from book title
+            safe_title = re.sub(r'[^\w\s-]', '', book_title).strip()
+            safe_title = re.sub(r'[-\s]+', '-', safe_title)
             safe_title = safe_title[:50]  # Limit length
             
             # Determine file extension
-            content_type = response.headers.get('content-type', '')
             if 'jpeg' in content_type or 'jpg' in content_type:
                 ext = '.jpg'
             elif 'png' in content_type:
@@ -264,17 +330,38 @@ class CommBooksScraper:
             elif 'webp' in content_type:
                 ext = '.webp'
             else:
-                ext = '.jpg'  # Default
+                # Try to determine from URL
+                url_ext = os.path.splitext(img_url)[1].lower()
+                if url_ext in ['.jpg', '.jpeg', '.png', '.webp']:
+                    ext = url_ext
+                else:
+                    ext = '.jpg'  # Default
             
-            filename = f"{safe_title}_{int(time.time())}{ext}"
+            timestamp = int(time.time())
+            filename = f"{safe_title}_{timestamp}{ext}"
             filepath = os.path.join(self.images_dir, filename)
             
-            # Save image
+            # Save image and verify it's valid
             with open(filepath, 'wb') as f:
                 f.write(response.content)
             
-            logger.info(f"Downloaded image: {filepath}")
-            return filepath
+            # Verify the image can be opened (basic validation)
+            try:
+                with Image.open(filepath) as img:
+                    # Check minimum dimensions
+                    if img.width < 50 or img.height < 50:
+                        os.remove(filepath)
+                        logger.warning(f"Image too small after download: {img.width}x{img.height}")
+                        return None
+                    
+                    logger.info(f"Downloaded image: {filepath} ({img.width}x{img.height})")
+                    return f"images/covers/{filename}"  # Return relative path for templates
+            except Exception as e:
+                # Remove invalid image file
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                logger.error(f"Invalid image downloaded from {img_url}: {str(e)}")
+                return None
             
         except Exception as e:
             logger.error(f"Error downloading image {img_url}: {str(e)}")
