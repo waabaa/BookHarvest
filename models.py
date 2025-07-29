@@ -15,6 +15,7 @@ class Book(db.Model):
     publish_date = db.Column(String(200))
     cover_image_path = db.Column(String(500))
     book_url = db.Column(String(500), unique=True, nullable=False)
+    lecture_plan = db.Column(Text)  # AI 생성 강의안 (JSON 형태)
     scraped_at = db.Column(DateTime, default=datetime.utcnow)
     
     def __repr__(self):

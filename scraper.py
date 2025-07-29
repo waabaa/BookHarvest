@@ -243,13 +243,12 @@ class CommBooksScraper:
             if review_text:
                 book_data['review_200'] = review_text
             
-            # Extract contents (차례)
+            # Extract contents (차례) with improved formatting
             contents_text = self.extract_section_content(soup, "차례")
             if contents_text:
-                # Remove page numbers and clean up formatting
-                contents_text = re.sub(r'\d+\s*$', '', contents_text, flags=re.MULTILINE)
-                contents_text = re.sub(r'^\d+\s*', '', contents_text, flags=re.MULTILINE)
-                book_data['contents'] = contents_text.strip()
+                # Clean up and format contents properly
+                contents_text = self.format_contents_text(contents_text)
+                book_data['contents'] = contents_text
             
             # Extract book preview (책속으로)
             preview_text = self.extract_section_content(soup, "책속으로")
@@ -268,48 +267,65 @@ class CommBooksScraper:
                 else:
                     book_data['publish_date'] = re.sub(r'발행일[:\s]*', '', date_text).strip()
             
-            # Extract and download cover image - improve selectors for CommBooks
+            # Extract and download cover image - improved for CommBooks structure
             img_selectors = [
+                'img[src*="/wp-content/uploads/"]',  # CommBooks specific upload path
                 'img[alt*="표지"]',
                 'img[alt*="cover"]',
+                '.entry-content img',
+                '.post-content img', 
+                'article img',
                 '.book-cover img',
                 '.cover img',
                 'img[src*="cover"]',
                 '.product-image img',
                 '.main-image img',
-                'article img',
                 '.content img'
             ]
             
+            cover_found = False
             for selector in img_selectors:
+                if cover_found:
+                    break
+                    
                 img_elements = soup.select(selector)
+                logger.debug(f"Found {len(img_elements)} images with selector: {selector}")
+                
                 for img_element in img_elements:
                     if img_element:
                         src = img_element.get('src')
-                        if src and isinstance(src, str):
-                            # Skip small icons and navigation images
-                            if any(skip in src.lower() for skip in ['icon', 'logo', 'nav', 'menu', 'btn']):
+                        data_src = img_element.get('data-src')  # lazy loading
+                        
+                        # Try both src and data-src
+                        img_src = src or data_src
+                        
+                        if img_src and isinstance(img_src, str):
+                            # Skip obvious non-cover images
+                            skip_patterns = ['icon', 'logo', 'nav', 'menu', 'btn', 'arrow', 'social', 'footer']
+                            if any(skip in img_src.lower() for skip in skip_patterns):
                                 continue
                             
-                            # Check image dimensions if available
-                            width = img_element.get('width')
-                            height = img_element.get('height')
-                            if width and height:
-                                try:
-                                    w, h = int(width), int(height)
-                                    if w < 50 or h < 50:  # Skip tiny images
-                                        continue
-                                except:
-                                    pass
+                            # Skip very small images by file path patterns
+                            if any(size in img_src.lower() for size in ['-50x', '-30x', '-20x', 'thumb']):
+                                continue
                             
-                            img_url = urljoin(book_url, src)
+                            # Check alt text for book cover indicators
+                            alt_text = img_element.get('alt', '').lower()
+                            if any(indicator in alt_text for indicator in ['표지', 'cover', book_data['title'].lower()[:10]]):
+                                logger.info(f"Found potential cover image by alt text: {alt_text}")
+                            
+                            img_url = urljoin(book_url, img_src)
+                            logger.debug(f"Attempting to download image: {img_url}")
+                            
                             image_path = self.download_image(img_url, book_data['title'])
                             if image_path:
                                 book_data['cover_image_path'] = image_path
+                                logger.info(f"Successfully downloaded cover image: {image_path}")
+                                cover_found = True
                                 break
-                
-                if book_data['cover_image_path']:
-                    break
+            
+            if not cover_found:
+                logger.warning(f"No cover image found for book: {book_data['title']}")
             
             # Validate and truncate data to fit database constraints
             book_data = self.validate_book_data(book_data)
@@ -365,6 +381,42 @@ class CommBooksScraper:
         
         footer_count = sum(1 for indicator in footer_indicators if indicator in text)
         return footer_count >= 2
+    
+    def format_contents_text(self, contents_text):
+        """차례 텍스트의 포맷팅을 개선합니다."""
+        if not contents_text:
+            return ""
+        
+        lines = contents_text.split('\n')
+        formatted_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Remove page numbers at the end
+            line = re.sub(r'\s*\d+\s*$', '', line)
+            # Remove page numbers at the beginning  
+            line = re.sub(r'^\s*\d+\s*', '', line)
+            
+            # Handle chapter/section numbering
+            if re.match(r'^[0-9]+\s*장', line) or re.match(r'^제\s*[0-9]+\s*장', line):
+                # Main chapters - add extra spacing
+                if formatted_lines:
+                    formatted_lines.append('')
+                formatted_lines.append(line)
+            elif re.match(r'^[0-9]+\.[0-9]+', line):
+                # Sub-sections with numbering
+                formatted_lines.append('  ' + line)
+            elif line.startswith('-') or line.startswith('•'):
+                # Bullet points
+                formatted_lines.append('  ' + line)
+            else:
+                # Regular content
+                formatted_lines.append(line)
+        
+        return '\n'.join(formatted_lines)
     
     def download_image(self, img_url, book_title):
         """Download and save book cover image"""

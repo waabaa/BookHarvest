@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a Flask-based web scraper application designed to extract book information from the CommBooks website (commbooks.com). The application provides a dashboard interface for managing scraping jobs, viewing scraped books, and monitoring job progress. It scrapes book details including titles, authors, descriptions, reviews, and cover images from the AI book collection pages.
+This is a Flask-based web scraper application designed to extract book information from the CommBooks website (commbooks.com). The application provides a dashboard interface for managing scraping jobs, viewing scraped books, and monitoring job progress. It scrapes book details including titles, authors, descriptions, reviews, and cover images from the AI book collection pages. The system now includes AI-powered lecture plan generation using OpenAI's GPT-4 to create 3-4 session course outlines based on book content.
 
 ## User Preferences
 
@@ -32,6 +32,7 @@ The application uses two main database models:
    - Basic info: title, author, description
    - Extended content: 200-character reviews, table of contents, book previews
    - Metadata: publish date, cover image path, source URL, scraping timestamp
+   - AI features: lecture_plan field (JSON format) for AI-generated course content
 
 2. **ScrapingJob Model**: Tracks scraping job progress
    - Job parameters: start/end page ranges
@@ -42,16 +43,27 @@ The application uses two main database models:
 ## Key Components
 
 ### Web Scraper (scraper.py)
-- **CommBooksScraper Class**: Main scraping engine
+- **CommBooksScraper Class**: Main scraping engine with improved text formatting
 - **Session Management**: Persistent HTTP sessions with proper headers
 - **Rate Limiting**: Built-in delays to respect server resources
-- **Image Handling**: Downloads and processes book cover images
+- **Image Handling**: Enhanced book cover image detection and downloads
 - **Error Handling**: Robust error handling with logging and retry mechanisms
 - **Threading Support**: Background job execution to prevent UI blocking
+- **Data Validation**: Automatic text cleanup and length constraints
+- **Footer Filtering**: Removes website footer content from scraped data
+
+### AI Lecture Generator (lecture_generator.py)
+- **LectureGenerator Class**: OpenAI GPT-4 powered lecture plan creation
+- **Content Analysis**: Analyzes book content to determine appropriate difficulty level
+- **Structured Output**: Generates 3-4 session course outlines in JSON format
+- **Fallback System**: Provides basic structure when AI generation fails
+- **Customization**: Adapts lecture content based on book topic and complexity
 
 ### Web Interface (routes.py)
 - **Dashboard Route**: Main interface showing statistics and recent activity
 - **Job Management**: Start new scraping jobs with validation
+- **Book Details**: Enhanced book view with AI lecture plan integration
+- **Lecture Generation**: On-demand AI course creation from book content
 - **API Endpoints**: RESTful endpoints for status updates and data retrieval
 - **Progress Monitoring**: Real-time job progress tracking
 
@@ -59,6 +71,7 @@ The application uses two main database models:
 - **Database Models**: SQLAlchemy models with proper relationships
 - **Data Validation**: Built-in constraints and validation
 - **Timestamps**: Automatic timestamp management for tracking
+- **AI Integration**: Lecture plan storage in JSON format
 
 ## Data Flow
 
@@ -81,6 +94,7 @@ The application uses two main database models:
 - **BeautifulSoup4**: HTML parsing for web scraping
 - **Requests**: HTTP client for web requests
 - **Pillow**: Image processing for cover images
+- **OpenAI**: GPT-4 API for AI lecture plan generation
 
 ### Frontend Dependencies
 - **Bootstrap 5**: UI framework with dark theme

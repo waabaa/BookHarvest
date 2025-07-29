@@ -2,8 +2,10 @@ from flask import render_template, request, jsonify, redirect, url_for, flash
 from app import app, db
 from models import Book, ScrapingJob
 from scraper import start_scraping_job
+from lecture_generator import LectureGenerator
 import logging
 import os
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +184,49 @@ def books_list():
 def book_detail(book_id):
     """Display detailed information about a specific book"""
     book = Book.query.get_or_404(book_id)
-    return render_template('book_detail.html', book=book)
+    
+    # Parse lecture plan if it exists
+    lecture_plan_data = None
+    if book.lecture_plan:
+        try:
+            lecture_plan_data = json.loads(book.lecture_plan)
+        except json.JSONDecodeError:
+            logger.warning(f"Invalid JSON in lecture_plan for book {book_id}")
+    
+    return render_template('book_detail.html', book=book, lecture_plan=lecture_plan_data)
+
+@app.route('/generate_lecture/<int:book_id>', methods=['POST'])
+def generate_lecture(book_id):
+    """Generate AI lecture plan for a specific book"""
+    try:
+        book = Book.query.get_or_404(book_id)
+        
+        # Prepare book data for lecture generation
+        book_data = {
+            'title': book.title,
+            'author': book.author,
+            'description': book.description,
+            'contents': book.contents,
+            'book_preview': book.book_preview,
+            'review_200': book.review_200
+        }
+        
+        # Generate lecture plan using AI
+        lecture_generator = LectureGenerator()
+        lecture_plan = lecture_generator.generate_lecture_plan(book_data)
+        
+        # Save the lecture plan to database
+        book.lecture_plan = json.dumps(lecture_plan, ensure_ascii=False, indent=2)
+        db.session.commit()
+        
+        flash('AI 강의안이 성공적으로 생성되었습니다!', 'success')
+        logger.info(f"Generated lecture plan for book: {book.title}")
+        
+    except Exception as e:
+        logger.error(f"Error generating lecture plan for book {book_id}: {str(e)}")
+        flash('강의안 생성 중 오류가 발생했습니다.', 'error')
+    
+    return redirect(url_for('book_detail', book_id=book_id))
 
 @app.route('/jobs')
 def jobs_list():
