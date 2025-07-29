@@ -281,10 +281,15 @@
                                         {% if section.content %}
                                             <div class="text-muted mb-2"><i class="fas fa-info-circle me-1"></i>{{ section.content }}</div>
                                         {% endif %}
-                                        {% if section.detailed_explanation %}
-                                            <div class="text-dark small mb-2 p-2 bg-white rounded border-start border-info border-3">
-                                                <strong class="text-info">상세 설명:</strong><br>
-                                                {{ section.detailed_explanation }}
+                                        {% if section.detailed_explanations %}
+                                            <div class="mb-3">
+                                                <strong class="text-info"><i class="fas fa-book-open me-1"></i>상세 설명:</strong>
+                                                {% for explanation in section.detailed_explanations %}
+                                                <div class="text-dark small mb-2 p-2 bg-white rounded border-start border-info border-2 ms-2">
+                                                    <strong class="text-primary">{{ explanation.title }}:</strong><br>
+                                                    {{ explanation.content }}
+                                                </div>
+                                                {% endfor %}
                                             </div>
                                         {% endif %}
                                         {% if section.examples %}
