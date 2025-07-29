@@ -42,7 +42,7 @@ class LectureGenerator:
                 ],
                 response_format={"type": "json_object"},
                 temperature=0.7,
-                max_tokens=4000,  # 더 상세한 내용을 위해 토큰 수 증가
+                max_tokens=6000,  # 6강 생성을 위해 토큰 수 대폭 증가
                 timeout=60  # 빠른 모델이므로 1분으로 충분
             )
             
@@ -124,7 +124,9 @@ class LectureGenerator:
             level_description = level_map.get(lecture_preferences.get('target_level', ''), '')
         
         prompt = f"""
-다음 책 정보를 바탕으로 {session_count} 분량의 체계적인 강의안을 JSON 형식으로 작성해주세요.
+다음 책 정보를 바탕으로 정확히 {session_count}강 분량의 체계적인 강의안을 JSON 형식으로 작성해주세요.
+
+⚠️ 중요: 반드시 {session_count}개의 강의를 모두 포함해야 합니다. 1강부터 {session_count}강까지 빠짐없이 작성하세요.
 
 **책 정보:**
 - 제목: {title}
@@ -162,7 +164,7 @@ class LectureGenerator:
     {{
       "lecture_number": 1,
       "title": "1강 제목",
-      "duration": "90분",
+      "duration": "{session_duration}분",
       "objectives": ["1강 목표1", "1강 목표2"],
       "outline": [
         {{
@@ -229,16 +231,15 @@ class LectureGenerator:
   }}
 }}
 
-**중요 지침:**
-1. 각 섹션의 "content"와 "detailed_explanations"에는 강사가 실제로 말할 수 있는 구체적인 내용을 작성하세요
-2. detailed_explanations는 반드시 3개 항목으로 구성하고, 각각 200-300자로 작성하세요
-3. 첫 번째는 "핵심 개념 설명", 두 번째는 "실무적 관점", 세 번째는 "학습 포인트"로 구성하세요
-4. 단순한 키워드나 제목이 아닌, 완전한 설명 문장으로 작성하세요
-5. 예를 들어 "AI의 기본 개념"이라면, AI가 무엇인지, 특징, 작동 원리를 각각 다른 관점에서 3번 설명하세요
-6. 각 섹션은 할당된 시간에 맞는 충분한 내용량을 포함해야 합니다
-7. 실제 강의실에서 바로 사용할 수 있는 수준의 상세함을 제공하세요
+**매우 중요한 지침:**
+1. 🚨 반드시 {session_count}개의 강의를 모두 작성해야 합니다 (1강부터 {session_count}강까지)
+2. 각 강의는 완전한 구조를 갖춰야 합니다 (lecture_number, title, duration, objectives, outline)
+3. 각 섹션의 "content"와 "detailed_explanations"에는 강사가 실제로 말할 수 있는 구체적인 내용을 작성하세요
+4. detailed_explanations는 반드시 3개 항목으로 구성하고, 각각 150-200자로 작성하세요
+5. 첫 번째는 "핵심 개념 설명", 두 번째는 "실무적 관점", 세 번째는 "학습 포인트"로 구성하세요
+6. 실제 강의실에서 바로 사용할 수 있는 수준의 상세함을 제공하세요
 
-책의 내용과 수준을 고려하여 풍부하고 상세한 강의안을 구성해주세요.
+📌 다시 한번 강조: {session_count}강 모두 포함해주세요!
 """
         return prompt
     
@@ -246,7 +247,9 @@ class LectureGenerator:
         """사용자 선택사항에 따른 시스템 메시지를 생성합니다."""
         base_content = """당신은 전문적인 강의 설계 전문가입니다. 주어진 책 정보를 바탕으로 체계적이고 실용적인 강의안을 만드는 것이 목표입니다. 
 
-중요: 각 섹션의 내용은 강사가 실제 강의에서 그대로 활용할 수 있을 정도로 상세하고 구체적으로 작성해야 합니다. 단순한 제목이나 키워드가 아닌, 실제 설명할 내용을 문장으로 풀어서 작성하세요."""
+🚨 매우 중요: 사용자가 요청한 강의 수를 정확히 맞춰서 모든 강의를 완성해야 합니다. 1강만 작성하고 끝내지 마세요. 요청된 모든 강의를 빠짐없이 포함해야 합니다.
+
+각 섹션의 내용은 강사가 실제 강의에서 그대로 활용할 수 있을 정도로 상세하고 구체적으로 작성해야 합니다."""
         
         if not lecture_preferences:
             return base_content

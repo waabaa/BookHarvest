@@ -91,7 +91,7 @@ class AlternativeLectureGenerator:
 저자: {author}
 소개: {description}
 
-JSON 형식:
+JSON 형식 (반드시 {session_count}강 모두 포함):
 {{
   "lecture_overview": {{
     "title": "강의 제목",
@@ -112,11 +112,19 @@ JSON 형식:
           "time": "20분"
         }}
       ]
+    }},
+    {{
+      "lecture_number": 2,
+      "title": "2강 제목",
+      "duration": "90분",
+      "objectives": ["목표1", "목표2"],
+      "outline": [...]
     }}
+    // {session_count}강까지 모두 포함하세요
   ]
 }}
 
-간결하지만 실용적으로 작성하세요.
+🚨 중요: 반드시 {session_count}개의 강의를 모두 작성하세요!
 """
 
 def get_best_generator() -> Any:
