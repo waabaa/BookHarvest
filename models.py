@@ -12,7 +12,7 @@ class Book(db.Model):
     review_200 = db.Column(Text)  # 200자평
     contents = db.Column(Text)    # 차례
     book_preview = db.Column(Text)  # 책속으로 (책 브리핑)
-    publish_date = db.Column(String(100))
+    publish_date = db.Column(String(200))
     cover_image_path = db.Column(String(500))
     book_url = db.Column(String(500), unique=True, nullable=False)
     scraped_at = db.Column(DateTime, default=datetime.utcnow)

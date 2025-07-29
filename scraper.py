@@ -85,6 +85,17 @@ class CommBooksScraper:
             r'045009800원',
             r'210\*297mm',
             r'128\*188mm',
+            # Footer and legal information patterns
+            r'이용약관.*?권장합니다\.',
+            r'개인정보취급방침.*?All Rights Reserved',
+            r'페이스북컴북스.*?파이어폭스를 권장합니다',
+            r'서울시.*?commbooks@commbooks\.com',
+            r'대표이사.*?통신판매업신고',
+            r'Copyright.*?All Rights Reserved',
+            r'커뮤니케이션북스.*?권장합니다',
+            r'사업자등록번호.*?\d+-\d+-\d+',
+            r'02\.7474\.001.*?02\.736\.5047',
+            r'성북구.*?성북동1가',
         ]
         
         cleaned_text = text
@@ -93,6 +104,17 @@ class CommBooksScraper:
         
         # Remove extra whitespace and normalize
         cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+        
+        # Check if the cleaned text is mostly footer/legal info
+        footer_indicators = [
+            '이용약관', '개인정보취급방침', 'commbooks@commbooks.com',
+            '대표이사', '사업자등록번호', 'Copyright', '커뮤니케이션북스',
+            '성북구', '페이스북컴북스'
+        ]
+        
+        footer_count = sum(1 for indicator in footer_indicators if indicator in cleaned_text)
+        if footer_count >= 3:  # If 3 or more footer indicators, likely footer content
+            return ""
         
         return cleaned_text
     
@@ -289,11 +311,60 @@ class CommBooksScraper:
                 if book_data['cover_image_path']:
                     break
             
+            # Validate and truncate data to fit database constraints
+            book_data = self.validate_book_data(book_data)
+            
+            logger.info(f"Scraped book: {book_data['title']}")
             return book_data
             
         except Exception as e:
             logger.error(f"Error scraping book {book_url}: {str(e)}")
             return None
+    
+    def validate_book_data(self, book_data):
+        """Validate and clean book data before saving to database"""
+        # Truncate fields that have database length limits
+        if book_data['title']:
+            book_data['title'] = book_data['title'][:500]
+        
+        if book_data['author']:
+            book_data['author'] = book_data['author'][:300]
+        
+        if book_data['publish_date']:
+            book_data['publish_date'] = book_data['publish_date'][:200]
+        
+        if book_data['cover_image_path']:
+            book_data['cover_image_path'] = book_data['cover_image_path'][:500]
+        
+        if book_data['book_url']:
+            book_data['book_url'] = book_data['book_url'][:500]
+        
+        # Ensure we have a title at minimum
+        if not book_data['title'] or book_data['title'].strip() == '':
+            book_data['title'] = 'Unknown Title'
+        
+        # Check if any field contains mostly footer content and clear it
+        fields_to_check = ['author', 'description', 'review_200', 'contents', 'book_preview', 'publish_date']
+        for field in fields_to_check:
+            if book_data[field] and self.is_footer_content(book_data[field]):
+                book_data[field] = ''
+                logger.warning(f"Cleared {field} field as it contained footer content")
+        
+        return book_data
+    
+    def is_footer_content(self, text):
+        """Check if text is mostly footer/legal content"""
+        if not text or len(text) < 20:
+            return False
+        
+        footer_indicators = [
+            '이용약관', '개인정보취급방침', 'commbooks@commbooks.com',
+            '대표이사', '사업자등록번호', 'Copyright', '커뮤니케이션북스',
+            '성북구', '페이스북컴북스', 'All Rights Reserved'
+        ]
+        
+        footer_count = sum(1 for indicator in footer_indicators if indicator in text)
+        return footer_count >= 2
     
     def download_image(self, img_url, book_title):
         """Download and save book cover image"""
