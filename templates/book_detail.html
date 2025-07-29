@@ -279,7 +279,31 @@
                                             {% if section.time %}<span class="badge bg-primary">{{ section.time }}</span>{% endif %}
                                         </div>
                                         {% if section.content %}
-                                            <div class="text-muted small mb-1"><i class="fas fa-info-circle me-1"></i>{{ section.content }}</div>
+                                            <div class="text-muted mb-2"><i class="fas fa-info-circle me-1"></i>{{ section.content }}</div>
+                                        {% endif %}
+                                        {% if section.detailed_explanation %}
+                                            <div class="text-dark small mb-2 p-2 bg-white rounded border-start border-info border-3">
+                                                <strong class="text-info">상세 설명:</strong><br>
+                                                {{ section.detailed_explanation }}
+                                            </div>
+                                        {% endif %}
+                                        {% if section.examples %}
+                                            <div class="text-success small mb-2">
+                                                <strong><i class="fas fa-lightbulb me-1"></i>예시:</strong>
+                                                <ul class="list-unstyled mb-0 ms-3">
+                                                    {% for example in section.examples %}
+                                                    <li class="mb-1">• {{ example }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                        {% if section.key_points %}
+                                            <div class="text-warning small mb-2">
+                                                <strong><i class="fas fa-star me-1"></i>핵심 포인트:</strong>
+                                                {% for point in section.key_points %}
+                                                <span class="badge bg-warning text-dark me-1">{{ point }}</span>
+                                                {% endfor %}
+                                            </div>
                                         {% endif %}
                                         {% if section.activities %}
                                             <div class="text-success small mb-1"><i class="fas fa-tasks me-1"></i><strong>활동:</strong> {{ section.activities }}</div>

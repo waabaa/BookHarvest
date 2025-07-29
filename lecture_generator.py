@@ -42,8 +42,8 @@ class LectureGenerator:
                 ],
                 response_format={"type": "json_object"},
                 temperature=0.7,
-                max_tokens=3000,
-                timeout=30  # 30초 타임아웃
+                max_tokens=4000,  # 더 상세한 내용을 위해 토큰 수 증가
+                timeout=60  # 더 긴 응답을 위해 타임아웃 증가
             )
             
             # 응답 파싱
@@ -133,9 +133,12 @@ class LectureGenerator:
 5. 단계별 학습 목표 제시
 6. 각 강의의 outline은 최소 5-7개의 세부 섹션으로 구성
 7. 각 섹션마다 구체적인 내용, 활동, 시간 배분을 상세히 포함
-8. 실무 예제, 실습 과제, 토론 주제를 풍부하게 제시
-9. 각 강의마다 핵심 개념 5-7개, 활동 3-5개를 포함
-{f'10. 특별 강조사항: {lecture_preferences.get("special_focus", "")}' if lecture_preferences and lecture_preferences.get("special_focus") else ""}
+8. **중요**: 각 섹션에는 실제 강의에서 사용할 수 있는 상세한 텍스트 내용을 포함
+9. 섹션별로 최소 200-300자 분량의 구체적인 설명 내용 작성
+10. 실무 예제, 실습 과제, 토론 주제를 풍부하게 제시
+11. 각 강의마다 핵심 개념 5-7개, 활동 3-5개를 포함
+12. 슬라이드나 교재에 들어갈 수 있는 수준의 상세한 내용 제공
+{f'13. 특별 강조사항: {lecture_preferences.get("special_focus", "")}' if lecture_preferences and lecture_preferences.get("special_focus") else ""}
 
 **JSON 형식:**
 {{
@@ -155,16 +158,22 @@ class LectureGenerator:
       "outline": [
         {{
           "section": "섹션명",
-          "content": "구체적 내용 설명 (상세하고 실무적으로)",
+          "content": "강의에서 실제로 설명할 상세한 내용 (최소 200-300자). 개념 정의, 예시, 설명 등을 포함하여 강사가 그대로 활용할 수 있는 수준으로 작성",
+          "detailed_explanation": "해당 섹션의 핵심 내용을 더욱 자세히 풀어서 설명. 학생들이 이해하기 쉽도록 단계별로 설명",
+          "examples": ["구체적인 예시1", "구체적인 예시2", "실제 사례"],
           "activities": "실습 또는 토론 활동",
           "materials": "필요한 자료나 도구",
+          "key_points": ["핵심 포인트1", "핵심 포인트2", "핵심 포인트3"],
           "time": "시간 배분"
         }},
         {{
           "section": "다음 섹션명",
-          "content": "더 구체적인 내용",
+          "content": "마찬가지로 상세한 강의 내용 (최소 200-300자)",
+          "detailed_explanation": "상세 설명",
+          "examples": ["예시들"],
           "activities": "관련 활동",
           "materials": "필요 자료",
+          "key_points": ["중요 포인트들"],
           "time": "시간"
         }}
       ],
@@ -185,13 +194,22 @@ class LectureGenerator:
   }}
 }}
 
-책의 내용과 수준을 고려하여 적절한 난이도로 강의안을 구성해주세요.
+**중요 지침:**
+1. 각 섹션의 "content"와 "detailed_explanation"에는 강사가 실제로 말할 수 있는 구체적인 내용을 작성하세요
+2. 단순한 키워드나 제목이 아닌, 설명 문장으로 작성하세요
+3. 예를 들어 "AI의 기본 개념"이라면, AI가 무엇인지, 어떤 특징이 있는지, 어떻게 작동하는지 등을 구체적으로 설명하세요
+4. 각 섹션은 할당된 시간에 맞는 충분한 내용량을 포함해야 합니다
+5. 실제 강의실에서 바로 사용할 수 있는 수준의 상세함을 제공하세요
+
+책의 내용과 수준을 고려하여 풍부하고 상세한 강의안을 구성해주세요.
 """
         return prompt
     
     def _get_system_content(self, lecture_preferences):
         """사용자 선택사항에 따른 시스템 메시지를 생성합니다."""
-        base_content = "당신은 전문적인 강의 설계 전문가입니다. 주어진 책 정보를 바탕으로 체계적이고 실용적인 강의안을 만드는 것이 목표입니다."
+        base_content = """당신은 전문적인 강의 설계 전문가입니다. 주어진 책 정보를 바탕으로 체계적이고 실용적인 강의안을 만드는 것이 목표입니다. 
+
+중요: 각 섹션의 내용은 강사가 실제 강의에서 그대로 활용할 수 있을 정도로 상세하고 구체적으로 작성해야 합니다. 단순한 제목이나 키워드가 아닌, 실제 설명할 내용을 문장으로 풀어서 작성하세요."""
         
         if not lecture_preferences:
             return base_content
