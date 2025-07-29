@@ -38,3 +38,20 @@ class ScrapingJob(db.Model):
     
     def __repr__(self):
         return f'<ScrapingJob {self.id}: Pages {self.start_page}-{self.end_page}>'
+
+class PDFAttachment(db.Model):
+    __tablename__ = 'pdf_attachments'
+    
+    id = db.Column(Integer, primary_key=True)
+    filename = db.Column(String(500), nullable=False)
+    file_path = db.Column(String(500), nullable=False)
+    file_size = db.Column(Integer)  # 파일 크기 (bytes)
+    content_text = db.Column(Text)  # PDF에서 추출한 텍스트
+    uploaded_at = db.Column(DateTime, default=datetime.utcnow)
+    
+    # Book과의 관계 설정
+    book_id = db.Column(Integer, db.ForeignKey('books.id'), nullable=True)
+    book = db.relationship('Book', backref='pdf_attachments')
+    
+    def __repr__(self):
+        return f'<PDFAttachment {self.filename}>'

@@ -90,7 +90,7 @@ class LectureGenerator:
                 'fallback_plan': self._get_fallback_lecture_plan(title, lecture_preferences)
             }
     
-    def _create_lecture_prompt(self, title, author, description, contents, book_preview, review_200, lecture_preferences=None):
+    def _create_lecture_prompt(self, title, author, description, contents, book_preview, review_200, lecture_preferences=None, pdf_content=""):
         """강의안 생성을 위한 프롬프트를 만듭니다."""
         
         # 사용자 선택사항에 따른 요구사항 조정
@@ -141,6 +141,7 @@ class LectureGenerator:
 - 차례: {contents}
 - 책속으로: {book_preview}
 - 200자평: {review_200}
+{pdf_content if pdf_content else ''}
 
 **요구사항:**
 1. {session_count}으로 구성된 강의 계획

@@ -1,9 +1,13 @@
 from flask import render_template, request, jsonify, redirect, url_for, flash
 from app import app, db
-from models import Book, ScrapingJob
+from models import Book, ScrapingJob, PDFAttachment
 from scraper import start_scraping_job
 from lecture_generator import LectureGenerator
 from ppt_generator import PPTGenerator
+from pdf_processor import PDFProcessor
+
+# PDF 프로세서 인스턴스 생성
+pdf_processor = PDFProcessor()
 import logging
 import os
 import json
@@ -215,14 +219,23 @@ def generate_lecture(book_id):
     try:
         book = Book.query.get_or_404(book_id)
         
-        # Prepare book data for lecture generation
+        # Get PDF attachments for this book
+        pdf_attachments = PDFAttachment.query.filter_by(book_id=book_id).all()
+        pdf_content = ""
+        if pdf_attachments:
+            for pdf in pdf_attachments:
+                if pdf.content_text:
+                    pdf_content += f"\n\n[첨부 PDF: {pdf.filename}]\n{pdf.content_text[:2000]}..."  # 처음 2000자만
+        
+        # Prepare book data for lecture generation with PDF content
         book_data = {
             'title': book.title,
             'author': book.author,
             'description': book.description,
             'contents': book.contents,
             'book_preview': book.book_preview,
-            'review_200': book.review_200
+            'review_200': book.review_200,
+            'pdf_content': pdf_content
         }
         
         # Get user preferences from form
@@ -361,6 +374,62 @@ def generate_lecture(book_id):
             flash('강의안 생성 중 예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error')
     
     return redirect(url_for('book_detail', book_id=book_id))
+
+@app.route('/upload_pdf/<int:book_id>', methods=['POST'])
+def upload_pdf(book_id):
+    """PDF 파일 업로드"""
+    try:
+        book = Book.query.get_or_404(book_id)
+        
+        if 'pdf_file' not in request.files:
+            flash('파일이 선택되지 않았습니다.', 'error')
+            return redirect(url_for('book_detail', book_id=book_id))
+        
+        file = request.files['pdf_file']
+        if file.filename == '':
+            flash('파일이 선택되지 않았습니다.', 'error')
+            return redirect(url_for('book_detail', book_id=book_id))
+        
+        # PDF 파일 저장 및 처리
+        pdf_attachment, error = pdf_processor.save_pdf_file(file, book_id)
+        
+        if error:
+            flash(error, 'error')
+        else:
+            flash(f'PDF 파일 "{pdf_attachment.filename}"이 성공적으로 업로드되었습니다.', 'success')
+        
+    except Exception as e:
+        logger.error(f"PDF 업로드 실패: {str(e)}")
+        flash('PDF 업로드 중 오류가 발생했습니다.', 'error')
+    
+    return redirect(url_for('book_detail', book_id=book_id))
+
+@app.route('/delete_pdf/<int:pdf_id>', methods=['POST'])
+def delete_pdf(pdf_id):
+    """PDF 파일 삭제"""
+    try:
+        pdf_attachment = PDFAttachment.query.get_or_404(pdf_id)
+        book_id = pdf_attachment.book_id
+        
+        success, error = pdf_processor.delete_pdf(pdf_id)
+        
+        if error:
+            flash(error, 'error')
+        else:
+            flash('PDF 파일이 성공적으로 삭제되었습니다.', 'success')
+        
+    except Exception as e:
+        logger.error(f"PDF 삭제 실패: {str(e)}")
+        flash('PDF 삭제 중 오류가 발생했습니다.', 'error')
+        book_id = request.form.get('book_id', 1)  # fallback
+    
+    return redirect(url_for('book_detail', book_id=book_id))
+
+@app.route('/pdfs')
+def pdfs_list():
+    """모든 PDF 첨부파일 목록"""
+    pdfs = pdf_processor.get_all_pdfs()
+    return render_template('pdfs_list.html', pdfs=pdfs)
 
 @app.route('/download_lecture_ppt/<int:book_id>')
 def download_lecture_ppt(book_id):
