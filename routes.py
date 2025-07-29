@@ -226,25 +226,51 @@ def generate_lecture(book_id):
         # Remove empty values
         lecture_preferences = {k: v for k, v in lecture_preferences.items() if v}
         
-        # Generate lecture plan using AI with user preferences (with better error handling)
-        lecture_generator = LectureGenerator()
-        
-        # 긴 강의안 생성을 위한 특별 처리
+        # Generate lecture plan using AI with multiple fallback options
         session_count = int(lecture_preferences.get('session_count', 3))
-        if session_count > 4:
-            flash(f'{session_count}강 강의안을 생성 중입니다. 시간이 다소 걸릴 수 있습니다...', 'info')
         
+        lecture_plan = None
+        error_messages = []
+        
+        # 1차 시도: 개선된 기본 생성기 (빠른 GPT-3.5)
         try:
+            from lecture_generator import LectureGenerator
+            lecture_generator = LectureGenerator()
             lecture_plan = lecture_generator.generate_lecture_plan(book_data, lecture_preferences)
-        except Exception as api_error:
-            logger.error(f"Lecture generation API error: {str(api_error)}")
-            # 더 상세한 오류 정보 제공
-            if "timeout" in str(api_error).lower() or "timed out" in str(api_error).lower():
-                flash('강의안 생성 시간이 초과되었습니다. 강의 세션 수를 줄이거나 잠시 후 다시 시도해주세요.', 'warning')
-            elif "connection" in str(api_error).lower() or "network" in str(api_error).lower():
-                flash('네트워크 연결에 문제가 있습니다. 잠시 후 다시 시도해주세요.', 'warning')
+            
+            if lecture_plan and not lecture_plan.get('error'):
+                print("✅ 기본 생성기 성공")
             else:
-                flash('AI 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.', 'warning')
+                error_messages.append("기본 생성기 실패")
+                lecture_plan = None
+                
+        except Exception as api_error:
+            error_messages.append(f"기본 생성기 오류: {str(api_error)}")
+            lecture_plan = None
+        
+        # 2차 시도: 대안 생성기들
+        if not lecture_plan:
+            try:
+                from alternative_generators import AlternativeLectureGenerator
+                alt_gen = AlternativeLectureGenerator()
+                
+                # OpenAI 간단 모드 시도
+                print("🔄 대안 생성기 시도 중...")
+                lecture_plan = alt_gen.generate_with_openai_simple(book_data, lecture_preferences)
+                
+                if lecture_plan:
+                    print("✅ 대안 생성기 성공")
+                    flash('빠른 모드로 강의안을 생성했습니다!', 'success')
+                else:
+                    error_messages.append("대안 생성기도 실패")
+                    
+            except Exception as alt_error:
+                error_messages.append(f"대안 생성기 오류: {str(alt_error)}")
+        
+        # 모든 시도 실패시 에러 처리
+        if not lecture_plan:
+            logger.error(f"All lecture generators failed: {'; '.join(error_messages)}")
+            flash('현재 AI 서비스가 불안정합니다. 잠시 후 다시 시도해주세요.', 'warning')
             return redirect(url_for('book_detail', book_id=book_id))
         
         # Check if lecture plan generation was successful

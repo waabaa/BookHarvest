@@ -31,11 +31,11 @@ class LectureGenerator:
                 print("OpenAI API 키가 설정되지 않았습니다.")
                 return self._get_fallback_lecture_plan(title, lecture_preferences)
             
-            print(f"OpenAI API 호출 중... (모델: gpt-4o)")
+            print(f"OpenAI API 호출 중... (모델: gpt-3.5-turbo - 빠른 생성)")
             
-            # OpenAI API 호출 (타임아웃 추가)
+            # OpenAI API 호출 (더 빠른 모델 사용)
             response = self.client.chat.completions.create(
-                model="gpt-4o",  # 최신 모델 사용
+                model="gpt-3.5-turbo",  # 더 빠르고 안정적인 모델 사용
                 messages=[
                     {"role": "system", "content": system_content},
                     {"role": "user", "content": prompt}
@@ -43,7 +43,7 @@ class LectureGenerator:
                 response_format={"type": "json_object"},
                 temperature=0.7,
                 max_tokens=4000,  # 더 상세한 내용을 위해 토큰 수 증가
-                timeout=120  # 긴 강의안 생성을 위해 2분으로 증가
+                timeout=60  # 빠른 모델이므로 1분으로 충분
             )
             
             # 응답 파싱
