@@ -127,7 +127,7 @@
 </div>
 
 <!-- Pagination -->
-{% if pagination.pages > 1 %}
+{% if pagination and pagination.pages > 1 %}
 <nav aria-label="도서 목록 페이지네이션">
     <ul class="pagination justify-content-center">
         {% if pagination.has_prev %}

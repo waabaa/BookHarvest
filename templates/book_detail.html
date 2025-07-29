@@ -70,7 +70,7 @@
                         <i class="fas fa-chalkboard-teacher me-2"></i>강의안 보기
                     </a>
                     {% endif %}
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#lectureModal">
+                    <button type="button" class="btn btn-primary" onclick="toggleLectureForm()">
                         <i class="fas fa-plus me-2"></i>새 강의안 생성
                     </button>
                     <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#pdfModal">
@@ -85,103 +85,177 @@
     </div>
 </div>
 
-<!-- Book Content Tabs -->
-<div class="card mb-5">
-    <div class="card-header">
-        <ul class="nav nav-tabs card-header-tabs" id="contentTabs" role="tablist">
-            {% if book.contents %}
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="contents-tab" data-bs-toggle="tab" data-bs-target="#contents" type="button" role="tab">
-                    <i class="fas fa-list me-2"></i>목차
-                </button>
-            </li>
-            {% endif %}
-            {% if book.book_preview %}
-            <li class="nav-item" role="presentation">
-                <button class="nav-link{% if not book.contents %} active{% endif %}" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview" type="button" role="tab">
-                    <i class="fas fa-eye me-2"></i>미리보기
-                </button>
-            </li>
-            {% endif %}
-            {% if book.review_200 %}
-            <li class="nav-item" role="presentation">
-                <button class="nav-link{% if not book.contents and not book.book_preview %} active{% endif %}" id="review-tab" data-bs-toggle="tab" data-bs-target="#review" type="button" role="tab">
-                    <i class="fas fa-star me-2"></i>200자평
-                </button>
-            </li>
-            {% endif %}
-            {% if pdf_attachments %}
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="pdf-tab" data-bs-toggle="tab" data-bs-target="#pdf-content" type="button" role="tab">
-                    <i class="fas fa-file-pdf me-2"></i>첨부 PDF ({{ pdf_attachments|length }})
-                </button>
-            </li>
-            {% endif %}
-        </ul>
+<!-- Lecture Generation Form -->
+<div class="card mb-5" id="lectureGenerationCard" style="display: none;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-magic me-2"></i>AI 강의안 생성
+        </h5>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleLectureForm()">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
     <div class="card-body">
-        <div class="tab-content" id="contentTabsContent">
-            {% if book.contents %}
-            <div class="tab-pane fade show active" id="contents" role="tabpanel">
-                <h6 class="mb-3">목차</h6>
-                <div class="lecture-content">
-                    {{ book.contents|safe }}
-                </div>
-            </div>
-            {% endif %}
-            
-            {% if book.book_preview %}
-            <div class="tab-pane fade{% if not book.contents %} show active{% endif %}" id="preview" role="tabpanel">
-                <h6 class="mb-3">책 미리보기</h6>
-                <div class="lecture-content">
-                    {{ book.book_preview|safe }}
-                </div>
-            </div>
-            {% endif %}
-            
-            {% if book.review_200 %}
-            <div class="tab-pane fade{% if not book.contents and not book.book_preview %} show active{% endif %}" id="review" role="tabpanel">
-                <h6 class="mb-3">200자평</h6>
-                <div class="lecture-content">
-                    {{ book.review_200|safe }}
-                </div>
-            </div>
-            {% endif %}
-            
-            {% if pdf_attachments %}
-            <div class="tab-pane fade" id="pdf-content" role="tabpanel">
-                <h6 class="mb-3">첨부된 PDF 파일</h6>
-                {% for pdf in pdf_attachments %}
-                <div class="card mb-3">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div>
-                            <i class="fas fa-file-pdf text-danger me-2"></i>
-                            <strong>{{ pdf.filename }}</strong>
-                        </div>
-                        <div>
-                            <span class="badge bg-secondary">{{ (pdf.file_size / 1024 / 1024)|round(2) }} MB</span>
-                            <form method="POST" action="{{ url_for('delete_pdf', book_id=book.id, pdf_id=pdf.id) }}" 
-                                  class="d-inline" onsubmit="return confirm('이 PDF를 삭제하시겠습니까?')">
-                                <button type="submit" class="btn btn-sm btn-outline-danger ms-2">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
-                        </div>
+        <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" id="lectureForm">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="lecture_style" class="form-label">강의 스타일</label>
+                        <select class="form-select" id="lecture_style" name="lecture_style" required>
+                            <option value="comprehensive">종합형 강의안</option>
+                            <option value="slide_summary">슬라이드용 요약</option>
+                            <option value="deep_analysis">심화 분석형</option>
+                            <option value="practical_focus">실전 문제 중심</option>
+                            <option value="citation_enhanced">최신 정보 인용형</option>
+                        </select>
+                        <div class="form-text style-description"></div>
                     </div>
-                    {% if pdf.content_text %}
-                    <div class="card-body">
-                        <div class="lecture-content" style="max-height: 300px; overflow-y: auto;">
-                            {{ pdf.content_text[:2000] }}{% if pdf.content_text|length > 2000 %}...{% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
                 </div>
-                {% endfor %}
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="target_level" class="form-label">대상 수준</label>
+                        <select class="form-select" id="target_level" name="target_level" required>
+                            <option value="초급">초급</option>
+                            <option value="중급" selected>중급</option>
+                            <option value="고급">고급</option>
+                            <option value="혼합">혼합</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-            {% endif %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="session_count" class="form-label">강의 세션 수</label>
+                        <select class="form-select" id="session_count" name="session_count">
+                            <option value="3" selected>3회</option>
+                            <option value="4">4회</option>
+                            <option value="5">5회</option>
+                            <option value="6">6회</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="session_duration" class="form-label">세션당 시간</label>
+                        <select class="form-select" id="session_duration" name="session_duration">
+                            <option value="60분">60분</option>
+                            <option value="90분" selected>90분</option>
+                            <option value="120분">120분</option>
+                            <option value="150분">150분</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="special_focus" class="form-label">특별 강조사항 (선택사항)</label>
+                <textarea class="form-control" id="special_focus" name="special_focus" rows="3" 
+                          placeholder="특별히 강조하고 싶은 내용이나 교육 목표를 입력하세요"></textarea>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Perplexity AI 활용</strong><br>
+                최신 연구 동향과 실무 사례가 자동으로 포함된 고품질 강의안이 생성됩니다.
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary" id="generateBtn">
+                    <i class="fas fa-magic me-2"></i>강의안 생성
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="toggleLectureForm()">
+                    취소
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Book Content Sections -->
+{% if book.contents %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0">
+            <i class="fas fa-list me-2"></i>목차
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="lecture-content">
+            {{ book.contents|safe }}
         </div>
     </div>
 </div>
+{% endif %}
+
+{% if book.book_preview %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0">
+            <i class="fas fa-eye me-2"></i>책 미리보기
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="lecture-content">
+            {{ book.book_preview|safe }}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if book.review_200 %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0">
+            <i class="fas fa-star me-2"></i>200자평
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="lecture-content">
+            {{ book.review_200|safe }}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if pdf_attachments %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0">
+            <i class="fas fa-file-pdf me-2"></i>첨부된 PDF 파일 ({{ pdf_attachments|length }}개)
+        </h6>
+    </div>
+    <div class="card-body">
+        {% for pdf in pdf_attachments %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-file-pdf text-danger me-2"></i>
+                    <strong>{{ pdf.filename }}</strong>
+                </div>
+                <div>
+                    <span class="badge bg-secondary">{{ (pdf.file_size / 1024 / 1024)|round(2) }} MB</span>
+                    <form method="POST" action="{{ url_for('delete_pdf', book_id=book.id, pdf_id=pdf.id) }}" 
+                          class="d-inline" onsubmit="return confirm('이 PDF를 삭제하시겠습니까?')">
+                        <button type="submit" class="btn btn-sm btn-outline-danger ms-2">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% if pdf.content_text %}
+            <div class="card-body">
+                <div class="lecture-content" style="max-height: 300px; overflow-y: auto;">
+                    {{ pdf.content_text[:2000] }}{% if pdf.content_text|length > 2000 %}...{% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 
 <!-- Lecture Plan Section -->
 {% if book.lecture_plan %}
@@ -191,7 +265,7 @@
             <i class="fas fa-chalkboard-teacher me-2"></i>생성된 강의안
         </h5>
         <div>
-            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#lectureModal">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleLectureForm()">
                 <i class="fas fa-edit me-1"></i>새로 생성
             </button>
             <button class="btn btn-outline-secondary btn-sm" onclick="printLecturePlan()">
@@ -211,98 +285,14 @@
         <i class="fas fa-chalkboard-teacher fa-3x text-muted mb-3"></i>
         <h5 class="text-muted mb-3">아직 생성된 강의안이 없습니다</h5>
         <p class="text-muted mb-4">AI를 활용하여 이 도서의 맞춤형 강의안을 생성해보세요.</p>
-        <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#lectureModal">
+        <button type="button" class="btn btn-primary btn-lg" onclick="toggleLectureForm()">
             <i class="fas fa-magic me-2"></i>강의안 생성하기
         </button>
     </div>
 </div>
 {% endif %}
 
-<!-- Lecture Generation Modal -->
-<div class="modal fade" id="lectureModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content" style="background: var(--dark-card); border: 1px solid var(--dark-border);">
-            <div class="modal-header" style="border-bottom: 1px solid var(--dark-border);">
-                <h5 class="modal-title">
-                    <i class="fas fa-magic me-2"></i>AI 강의안 생성
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" id="lectureForm">
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="lecture_style" class="form-label">강의 스타일</label>
-                                <select class="form-select" id="lecture_style" name="lecture_style" required>
-                                    <option value="comprehensive">종합형 강의안</option>
-                                    <option value="slide_summary">슬라이드용 요약</option>
-                                    <option value="deep_analysis">심화 분석형</option>
-                                    <option value="practical_focus">실전 문제 중심</option>
-                                    <option value="citation_enhanced">최신 정보 인용형</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="target_level" class="form-label">대상 수준</label>
-                                <select class="form-select" id="target_level" name="target_level" required>
-                                    <option value="초급">초급</option>
-                                    <option value="중급" selected>중급</option>
-                                    <option value="고급">고급</option>
-                                    <option value="혼합">혼합</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="session_count" class="form-label">강의 세션 수</label>
-                                <select class="form-select" id="session_count" name="session_count">
-                                    <option value="3" selected>3회</option>
-                                    <option value="4">4회</option>
-                                    <option value="5">5회</option>
-                                    <option value="6">6회</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="session_duration" class="form-label">세션당 시간</label>
-                                <select class="form-select" id="session_duration" name="session_duration">
-                                    <option value="60분">60분</option>
-                                    <option value="90분" selected>90분</option>
-                                    <option value="120분">120분</option>
-                                    <option value="150분">150분</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="special_focus" class="form-label">특별 강조사항 (선택사항)</label>
-                        <textarea class="form-control" id="special_focus" name="special_focus" rows="3" 
-                                  placeholder="특별히 강조하고 싶은 내용이나 교육 목표를 입력하세요"></textarea>
-                    </div>
-                    
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Perplexity AI 활용</strong><br>
-                        최신 연구 동향과 실무 사례가 자동으로 포함된 고품질 강의안이 생성됩니다.
-                    </div>
-                </div>
-                <div class="modal-footer" style="border-top: 1px solid var(--dark-border);">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="btn btn-primary" id="generateBtn">
-                        <i class="fas fa-magic me-2"></i>강의안 생성
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+
 
 <!-- PDF Management Modal -->
 <div class="modal fade" id="pdfModal" tabindex="-1">
@@ -361,16 +351,30 @@
 
 {% block extra_js %}
 <script>
+// 강의안 생성 폼 토글
+function toggleLectureForm() {
+    const card = document.getElementById('lectureGenerationCard');
+    if (card.style.display === 'none') {
+        card.style.display = 'block';
+        card.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        card.style.display = 'none';
+    }
+}
+
 // 강의안 생성 폼 제출 처리
 document.getElementById('lectureForm').addEventListener('submit', function(e) {
     const generateBtn = document.getElementById('generateBtn');
-    generateBtn.innerHTML = '<span class="loading-spinner me-2"></span>생성 중...';
+    generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>생성 중...';
     generateBtn.disabled = true;
 });
 
 // 강의안 인쇄 기능
 function printLecturePlan() {
-    const content = document.getElementById('lecture-content').innerHTML;
+    const content = document.getElementById('lecture-content');
+    if (!content) return;
+    
+    const printContent = content.innerHTML;
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
         <html>
@@ -378,11 +382,11 @@ function printLecturePlan() {
             <title>{{ book.title }} - 강의안</title>
             <style>
                 body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-                h1, h2, h3 { color: #2563eb; }
+                h1, h2, h3 { color: #e91e63; }
                 table { border-collapse: collapse; width: 100%; margin: 1em 0; }
                 th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
                 th { background-color: #f5f5f5; }
-                blockquote { border-left: 4px solid #2563eb; padding-left: 1em; margin: 1em 0; background: #f8f9fa; }
+                blockquote { border-left: 4px solid #e91e63; padding-left: 1em; margin: 1em 0; background: #f8f9fa; }
                 @media print { body { margin: 0; } }
             </style>
         </head>
@@ -390,7 +394,7 @@ function printLecturePlan() {
             <h1>{{ book.title }} - 강의안</h1>
             <p><strong>저자:</strong> {{ book.author or '저자 미상' }}</p>
             <hr>
-            ${content}
+            ${printContent}
         </body>
         </html>
     `);
@@ -408,26 +412,26 @@ const styleDescriptions = {
     'citation_enhanced': '최신 논문과 연구 동향이 풍부하게 인용된 학술형 강의안'
 };
 
-document.getElementById('lecture_style').addEventListener('change', function() {
-    const selectedStyle = this.value;
+// 스타일 설명 업데이트
+function updateStyleDescription() {
+    const styleSelect = document.getElementById('lecture_style');
+    const selectedStyle = styleSelect.value;
     const description = styleDescriptions[selectedStyle];
     
     // 기존 설명 제거
     const existingDesc = document.querySelector('.style-description');
     if (existingDesc) {
-        existingDesc.remove();
+        existingDesc.innerHTML = `<i class="fas fa-info-circle me-1"></i>${description}`;
     }
-    
-    // 새 설명 추가
-    const descElement = document.createElement('div');
-    descElement.className = 'form-text style-description';
-    descElement.innerHTML = `<i class="fas fa-info-circle me-1"></i>${description}`;
-    this.parentNode.appendChild(descElement);
-});
+}
 
-// 페이지 로드시 기본 설명 표시
+// 페이지 로드시 이벤트 등록
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('lecture_style').dispatchEvent(new Event('change'));
+    const styleSelect = document.getElementById('lecture_style');
+    if (styleSelect) {
+        styleSelect.addEventListener('change', updateStyleDescription);
+        updateStyleDescription(); // 초기 설명 표시
+    }
 });
 </script>
 {% endblock %}

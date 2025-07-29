@@ -16,6 +16,47 @@ from flask import send_file
 
 logger = logging.getLogger(__name__)
 
+def format_lecture_plan(lecture_plan_data):
+    """강의안 데이터를 HTML로 포맷팅"""
+    if not lecture_plan_data:
+        return "<p>강의안 데이터가 없습니다.</p>"
+    
+    try:
+        html_content = []
+        
+        # 제목 및 개요
+        if 'title' in lecture_plan_data:
+            html_content.append(f"<h2>{lecture_plan_data['title']}</h2>")
+        
+        # 내용 렌더링
+        if 'content' in lecture_plan_data:
+            content = lecture_plan_data['content']
+            # 마크다운 형식의 텍스트를 HTML로 변환
+            content = content.replace('\n## ', '\n<h3>').replace('\n### ', '\n<h4>')
+            content = content.replace('\n- ', '\n<li>').replace('\n* ', '\n<li>')
+            content = content.replace('\n**', '\n<strong>').replace('**', '</strong>')
+            content = content.replace('\n\n', '</p><p>')
+            content = f"<p>{content}</p>"
+            html_content.append(content)
+        
+        # 인용 출처 (Perplexity AI의 경우)
+        if 'citations' in lecture_plan_data and lecture_plan_data['citations']:
+            html_content.append('<h4>참고 자료</h4>')
+            html_content.append('<ul>')
+            for citation in lecture_plan_data['citations']:
+                html_content.append(f'<li><a href="{citation}" target="_blank">{citation}</a></li>')
+            html_content.append('</ul>')
+        
+        # 생성 정보
+        if 'generated_at' in lecture_plan_data:
+            html_content.append(f'<p class="text-muted small mt-3">생성일시: {lecture_plan_data["generated_at"]}</p>')
+        
+        return '\n'.join(html_content)
+        
+    except Exception as e:
+        logger.error(f"Error formatting lecture plan: {str(e)}")
+        return f"<p>강의안 포맷팅 중 오류가 발생했습니다: {str(e)}</p>"
+
 @app.route('/')
 def dashboard():
     """Main dashboard showing scraping status and results"""
@@ -214,26 +255,36 @@ def books_list():
     page = request.args.get('page', 1, type=int)
     per_page = 20
     
-    books = Book.query.order_by(Book.scraped_at.desc()).paginate(
+    pagination = Book.query.order_by(Book.scraped_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     
-    return render_template('books_list.html', books=books)
+    return render_template('books_list.html', books=pagination.items, pagination=pagination)
 
 @app.route('/book/<int:book_id>')
 def book_detail(book_id):
     """Display detailed information about a specific book"""
     book = Book.query.get_or_404(book_id)
     
+    # Get PDF attachments for this book
+    pdf_attachments = PDFAttachment.query.filter_by(book_id=book_id).all()
+    
     # Parse lecture plan if it exists
     lecture_plan_data = None
+    lecture_plan_content = ""
     if book.lecture_plan:
         try:
             lecture_plan_data = json.loads(book.lecture_plan)
+            lecture_plan_content = format_lecture_plan(lecture_plan_data)
         except json.JSONDecodeError:
             logger.warning(f"Invalid JSON in lecture_plan for book {book_id}")
+            lecture_plan_content = "<p>강의안 데이터를 읽을 수 없습니다.</p>"
     
-    return render_template('book_detail.html', book=book, lecture_plan=lecture_plan_data)
+    return render_template('book_detail.html', 
+                         book=book, 
+                         lecture_plan=lecture_plan_data,
+                         lecture_plan_content=lecture_plan_content,
+                         pdf_attachments=pdf_attachments)
 
 @app.route('/generate_lecture/<int:book_id>', methods=['POST'])
 def generate_lecture(book_id):
