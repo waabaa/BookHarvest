@@ -387,36 +387,65 @@ class CommBooksScraper:
         if not contents_text:
             return ""
         
-        lines = contents_text.split('\n')
+        # Remove page numbers first
+        text = re.sub(r'\s*\d+\s*$', '', contents_text, flags=re.MULTILINE)
+        text = re.sub(r'^\d+\s*', '', text, flags=re.MULTILINE)
+        
+        # Split by numbered items (01, 02, 03, etc.) and preserve the numbers
+        # This regex captures both the number and the following text
+        pattern = r'(\d{2}\s+[^0-9]+?)(?=\s*\d{2}\s+|$)'
+        matches = re.findall(pattern, text)
+        
         formatted_lines = []
         
-        for line in lines:
+        # If no numbered pattern found, try simpler approach
+        if not matches:
+            # Look for any text that might be chapters/sections
+            lines = text.split('\n')
+            current_text = ' '.join(lines).strip()
+            
+            # Try to split on common patterns
+            # Split on "01 ", "02 ", etc.
+            parts = re.split(r'(\d{2}\s+)', current_text)
+            
+            current_item = ""
+            for i, part in enumerate(parts):
+                if re.match(r'^\d{2}\s+$', part):  # This is a number like "01 "
+                    if current_item.strip():
+                        formatted_lines.append(current_item.strip())
+                    current_item = part
+                else:
+                    current_item += part
+            
+            # Add the last item
+            if current_item.strip():
+                formatted_lines.append(current_item.strip())
+        else:
+            # Add the main title if there's text before the first numbered item
+            before_numbers = re.split(r'\d{2}\s+', text)[0].strip()
+            if before_numbers and len(before_numbers) > 5:  # Only if substantial text
+                formatted_lines.append(before_numbers)
+            
+            # Add numbered items
+            for match in matches:
+                formatted_lines.append(match.strip())
+        
+        # Clean up and finalize
+        final_lines = []
+        for line in formatted_lines:
             line = line.strip()
-            if not line:
+            if not line or len(line) < 2:
                 continue
             
-            # Remove page numbers at the end
-            line = re.sub(r'\s*\d+\s*$', '', line)
-            # Remove page numbers at the beginning  
-            line = re.sub(r'^\s*\d+\s*', '', line)
+            # Clean up extra spaces
+            line = re.sub(r'\s+', ' ', line)
             
-            # Handle chapter/section numbering
-            if re.match(r'^[0-9]+\s*장', line) or re.match(r'^제\s*[0-9]+\s*장', line):
-                # Main chapters - add extra spacing
-                if formatted_lines:
-                    formatted_lines.append('')
-                formatted_lines.append(line)
-            elif re.match(r'^[0-9]+\.[0-9]+', line):
-                # Sub-sections with numbering
-                formatted_lines.append('  ' + line)
-            elif line.startswith('-') or line.startswith('•'):
-                # Bullet points
-                formatted_lines.append('  ' + line)
-            else:
-                # Regular content
-                formatted_lines.append(line)
+            # Remove trailing punctuation from page numbers
+            line = re.sub(r'\s*[.,;]\s*$', '', line)
+            
+            final_lines.append(line)
         
-        return '\n'.join(formatted_lines)
+        return '\n'.join(final_lines)
     
     def download_image(self, img_url, book_title):
         """Download and save book cover image"""

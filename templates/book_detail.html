@@ -120,8 +120,8 @@
                         <i class="fas fa-robot fa-3x text-muted mb-3"></i>
                         <h5>AI 강의안이 아직 생성되지 않았습니다</h5>
                         <p class="text-muted mb-4">책 내용을 바탕으로 3-4강 분량의 체계적인 강의안을 AI로 자동 생성할 수 있습니다.</p>
-                        <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" class="d-inline">
-                            <button type="submit" class="btn btn-primary btn-lg">
+                        <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" class="d-inline" id="generate-lecture-form">
+                            <button type="submit" class="btn btn-primary btn-lg" id="generate-btn">
                                 <i class="fas fa-magic me-2"></i>AI 강의안 생성하기
                             </button>
                         </form>
@@ -129,7 +129,14 @@
                 {% else %}
                     <!-- Lecture Overview -->
                     <div class="lecture-overview mb-4">
-                        <h5 class="border-bottom pb-2">강의 개요</h5>
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="mb-0">강의 개요</h5>
+                            {% if lecture_plan.generated_at %}
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>{{ lecture_plan.generated_at }}에 생성
+                            </small>
+                            {% endif %}
+                        </div>
                         <div class="row">
                             <div class="col-md-8">
                                 <h6>{{ lecture_plan.lecture_overview.title }}</h6>
@@ -251,12 +258,56 @@
                     
                     <!-- Regenerate Button -->
                     <div class="text-center mt-4 pt-3 border-top">
-                        <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" class="d-inline">
-                            <button type="submit" class="btn btn-outline-primary">
+                        <form method="POST" action="{{ url_for('generate_lecture', book_id=book.id) }}" class="d-inline" id="regenerate-lecture-form">
+                            <button type="submit" class="btn btn-outline-primary" id="regenerate-btn">
                                 <i class="fas fa-sync-alt me-2"></i>강의안 재생성
                             </button>
                         </form>
+                        <small class="text-muted d-block mt-2">
+                            새로운 강의안을 생성하면 기존 강의안은 히스토리에 보관됩니다.
+                        </small>
                     </div>
+                    
+                    <!-- Lecture History -->
+                    {% if lecture_plan.history and lecture_plan.history|length > 0 %}
+                    <div class="mt-4 pt-3 border-top">
+                        <h6><i class="fas fa-history me-2"></i>강의안 생성 히스토리</h6>
+                        <div class="accordion" id="lectureHistoryAccordion">
+                            {% for hist_item in lecture_plan.history %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading{{ loop.index }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#collapse{{ loop.index }}" aria-expanded="false">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-2"></i>{{ hist_item.generated_at }}에 생성된 강의안
+                                        </small>
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" 
+                                     data-bs-parent="#lectureHistoryAccordion">
+                                    <div class="accordion-body">
+                                        {% if hist_item.plan.lecture_overview %}
+                                        <h6>{{ hist_item.plan.lecture_overview.title }}</h6>
+                                        <p class="small text-muted">{{ hist_item.plan.lecture_overview.description }}</p>
+                                        {% endif %}
+                                        
+                                        {% if hist_item.plan.lectures %}
+                                        <div class="small">
+                                            <strong>강의 구성:</strong>
+                                            <ul class="list-unstyled mt-1 ms-3">
+                                                {% for lecture in hist_item.plan.lectures %}
+                                                <li>{{ lecture.lecture_number }}강: {{ lecture.title }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -301,5 +352,49 @@
     max-width: 100%;
     object-fit: contain;
 }
+
+.loading-btn {
+    position: relative;
+}
+
+.loading-btn:disabled {
+    pointer-events: none;
+}
+
+.loading-btn .spinner-border {
+    width: 1rem;
+    height: 1rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle generate lecture button
+    const generateForm = document.getElementById('generate-lecture-form');
+    const generateBtn = document.getElementById('generate-btn');
+    
+    if (generateForm && generateBtn) {
+        generateForm.addEventListener('submit', function(e) {
+            // Show loading state
+            generateBtn.disabled = true;
+            generateBtn.classList.add('loading-btn');
+            generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>AI 강의안 생성 중...';
+        });
+    }
+    
+    // Handle regenerate lecture button
+    const regenerateForm = document.getElementById('regenerate-lecture-form');
+    const regenerateBtn = document.getElementById('regenerate-btn');
+    
+    if (regenerateForm && regenerateBtn) {
+        regenerateForm.addEventListener('submit', function(e) {
+            // Show loading state
+            regenerateBtn.disabled = true;
+            regenerateBtn.classList.add('loading-btn');
+            regenerateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>새 강의안 생성 중...';
+        });
+    }
+});
+</script>
 </style>
 {% endblock %}

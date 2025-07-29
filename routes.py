@@ -6,6 +6,7 @@ from lecture_generator import LectureGenerator
 import logging
 import os
 import json
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +216,33 @@ def generate_lecture(book_id):
         lecture_generator = LectureGenerator()
         lecture_plan = lecture_generator.generate_lecture_plan(book_data)
         
-        # Save the lecture plan to database
+        # Save the lecture plan to database (keep history by timestamping)
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # If there's already a lecture plan, archive it
+        if book.lecture_plan:
+            try:
+                existing_plan = json.loads(book.lecture_plan)
+                if not existing_plan.get('history'):
+                    existing_plan['history'] = []
+                
+                # Add current plan to history
+                existing_plan['history'].append({
+                    'generated_at': existing_plan.get('generated_at', 'Unknown'),
+                    'plan': existing_plan.copy()
+                })
+                
+                # Remove history from the copy we're archiving
+                if 'history' in existing_plan['history'][-1]['plan']:
+                    del existing_plan['history'][-1]['plan']['history']
+                
+                lecture_plan['history'] = existing_plan['history']
+            except:
+                logger.warning("Could not parse existing lecture plan for history")
+        
+        # Add generation timestamp
+        lecture_plan['generated_at'] = current_time
+        
         book.lecture_plan = json.dumps(lecture_plan, ensure_ascii=False, indent=2)
         db.session.commit()
         
