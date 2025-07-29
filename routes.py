@@ -3,10 +3,12 @@ from app import app, db
 from models import Book, ScrapingJob
 from scraper import start_scraping_job
 from lecture_generator import LectureGenerator
+from ppt_generator import PPTGenerator
 import logging
 import os
 import json
 from datetime import datetime
+from flask import send_file
 
 logger = logging.getLogger(__name__)
 
@@ -254,6 +256,60 @@ def generate_lecture(book_id):
         flash('강의안 생성 중 오류가 발생했습니다.', 'error')
     
     return redirect(url_for('book_detail', book_id=book_id))
+
+@app.route('/download_lecture_ppt/<int:book_id>')
+def download_lecture_ppt(book_id):
+    """강의안을 PPT 형태로 다운로드"""
+    try:
+        book = Book.query.get_or_404(book_id)
+        
+        if not book.lecture_plan:
+            flash('강의안이 아직 생성되지 않았습니다. 먼저 강의안을 생성해주세요.', 'warning')
+            return redirect(url_for('book_detail', book_id=book_id))
+        
+        # Prepare book data
+        book_data = {
+            'title': book.title,
+            'author': book.author,
+            'description': book.description,
+            'contents': book.contents,
+            'book_preview': book.book_preview,
+            'review_200': book.review_200
+        }
+        
+        # Generate PPT
+        ppt_generator = PPTGenerator()
+        success = ppt_generator.generate_lecture_ppt(book_data, book.lecture_plan)
+        
+        if not success:
+            flash('PPT 생성 중 오류가 발생했습니다.', 'error')
+            return redirect(url_for('book_detail', book_id=book_id))
+        
+        # Save PPT file
+        filename = f"{book.title.replace(' ', '_')}_강의안.pptx"
+        file_path = os.path.join('static', 'downloads', filename)
+        
+        # Ensure downloads directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        if not ppt_generator.save_ppt(file_path):
+            flash('PPT 저장 중 오류가 발생했습니다.', 'error')
+            return redirect(url_for('book_detail', book_id=book_id))
+        
+        logger.info(f"Generated PPT for book: {book.title}")
+        
+        # Send file for download
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating PPT for book {book_id}: {str(e)}")
+        flash('PPT 다운로드 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('book_detail', book_id=book_id))
 
 @app.route('/jobs')
 def jobs_list():

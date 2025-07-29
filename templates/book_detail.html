@@ -263,9 +263,14 @@
                                 <i class="fas fa-sync-alt me-2"></i>강의안 재생성
                             </button>
                         </form>
-                        <small class="text-muted d-block mt-2">
-                            새로운 강의안을 생성하면 기존 강의안은 히스토리에 보관됩니다.
-                        </small>
+                        <div class="mt-3">
+                            <a href="{{ url_for('download_lecture_ppt', book_id=book.id) }}" class="btn btn-success me-2">
+                                <i class="fas fa-download me-2"></i>PPT 다운로드
+                            </a>
+                            <small class="text-muted d-block mt-2">
+                                새로운 강의안을 생성하면 기존 강의안은 히스토리에 보관됩니다.
+                            </small>
+                        </div>
                     </div>
                     
                     <!-- Lecture History -->
@@ -332,7 +337,8 @@
 }
 
 .lecture-card {
-    background-color: var(--bs-light);
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
     transition: box-shadow 0.2s;
 }
 
@@ -341,10 +347,11 @@
 }
 
 .lecture-overview {
-    background-color: var(--bs-primary-bg-subtle);
+    background-color: var(--bs-dark-bg-subtle);
     border-left: 4px solid var(--bs-primary);
     padding: 1rem;
     border-radius: 0.375rem;
+    border: 1px solid var(--bs-border-color);
 }
 
 .book-detail-image {
