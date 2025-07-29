@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}{{ book.title }} - CommBooks Scraper{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">대시보드</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('books_list') }}">책 목록</a></li>
+                <li class="breadcrumb-item active">{{ book.title[:30] }}{% if book.title|length > 30 %}...{% endif %}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Book Cover and Basic Info -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                {% if book.cover_image_path %}
+                <img src="{{ url_for('static', filename=book.cover_image_path.replace('static/', '')) }}" 
+                     class="book-detail-image img-fluid mb-3" alt="{{ book.title }}"
+                     onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/no-cover.svg') }}';">
+                {% else %}
+                <div class="book-cover-placeholder mb-3" style="height: 400px;">
+                    <i class="fas fa-book"></i>
+                </div>
+                {% endif %}
+                
+                <h4 class="card-title">{{ book.title }}</h4>
+                {% if book.author %}
+                    <p class="card-text"><strong><i class="fas fa-user me-2"></i>저자:</strong> {{ book.author }}</p>
+                {% endif %}
+                {% if book.publish_date %}
+                    <p class="card-text"><strong><i class="fas fa-calendar me-2"></i>발행일:</strong> {{ book.publish_date }}</p>
+                {% endif %}
+                
+                <div class="mt-3">
+                    {% if book.book_url %}
+                    <a href="{{ book.book_url }}" target="_blank" class="btn btn-primary">
+                        <i class="fas fa-external-link-alt me-2"></i>원본 사이트에서 보기
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>수집일: {{ book.scraped_at.strftime('%Y-%m-%d %H:%M') if book.scraped_at else '정보 없음' }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Book Details -->
+    <div class="col-lg-8">
+        <!-- Book Description -->
+        {% if book.description %}
+        <div class="book-content-section mb-4">
+            <h5><i class="fas fa-info-circle me-2"></i>책 소개</h5>
+            <div class="content-text">{{ book.description|replace('\n', '<br>')|safe }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- 200자평 -->
+        {% if book.review_200 %}
+        <div class="book-content-section mb-4">
+            <h5><i class="fas fa-quote-right me-2"></i>200자평</h5>
+            <div class="content-text">{{ book.review_200|replace('\n', '<br>')|safe }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- Table of Contents -->
+        {% if book.contents %}
+        <div class="book-content-section mb-4">
+            <h5><i class="fas fa-list me-2"></i>차례</h5>
+            <div class="content-text">{{ book.contents|replace('\n', '<br>')|safe }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- Book Preview -->
+        {% if book.book_preview %}
+        <div class="book-content-section mb-4">
+            <h5><i class="fas fa-eye me-2"></i>책속으로 (책 브리핑)</h5>
+            <div class="content-text">{{ book.book_preview|replace('\n', '<br>')|safe }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- If no content available -->
+        {% if not book.description and not book.review_200 and not book.contents and not book.book_preview %}
+        <div class="book-content-section mb-4">
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <h5>상세 정보가 수집되지 않았습니다</h5>
+                <p>이 책의 상세 정보는 웹사이트에서 추출할 수 없었습니다.</p>
+                {% if book.book_url %}
+                <a href="{{ book.book_url }}" target="_blank" class="btn btn-outline-primary">
+                    <i class="fas fa-external-link-alt me-2"></i>원본 사이트에서 확인하기
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Back to List Button -->
+<div class="row mt-4">
+    <div class="col">
+        <a href="{{ url_for('books_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>책 목록으로 돌아가기
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.content-text {
+    line-height: 1.8;
+    white-space: pre-wrap;
+}
+</style>
+{% endblock %}
