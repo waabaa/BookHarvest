@@ -10,13 +10,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (2025-07-30)
 
-✓ Perplexity AI 대폭 개선 (2025-07-30):
-- 프롬프트 전면 재작성: 대학원 수준의 상세한 강의안 생성
-- 최소 글자수 요구사항 추가 (개요 300자, 내용 200-300자)
-- JSON 구조 확장: key_concepts, case_studies, practical_applications 등
-- max_tokens 4000 → 8000으로 증가하여 더 풍부한 내용 생성
-- 실무 사례, 최신 연구동향, 업계 트렌드 필수 포함 강화
-- 다중 폴백 시스템: Perplexity → OpenAI → 대안 생성기 순서로 시도
+✓ Perplexity AI 혁신적 개선 - PPT 준비 강의안 (2025-07-30):
+- PPT 슬라이드별 구성: 제목, 핵심 포인트, 상세 내용, 발표자 노트 포함
+- 실제 기업 사례 요구: 회사명, 캠페인명, 구체적 성과 수치 필수 포함
+- 최신 데이터 인용: 2023-2024년 통계, 연구 결과, 출처 명시
+- 시각적 자료 제안: 차트, 그래프, 이미지 활용 가이드
+- PPT 제작 최적화: 발표에 바로 사용할 수 있는 실무적 구성
+- 검색 기반 콘텐츠: 온라인 검색을 통한 최신 정보 수집 강화
 
 ✓ 강의안 표시 시스템 완전 수정:
 - format_lecture_plan 함수 전면 개선으로 빈 콘텐츠 문제 해결

@@ -93,6 +93,69 @@ def format_lecture_plan(lecture_plan_data):
                                     else:
                                         html_content.append(f"<div class='ms-3 mb-2'>{section}</div>")
                         
+                        # PPT 슬라이드 구성 처리 (새로운 상세 형식)
+                        detailed_outline = lecture.get('detailed_outline', [])
+                        if detailed_outline:
+                            html_content.append("<div class='mt-3'><strong>📊 PPT 슬라이드 구성:</strong></div>")
+                            for section in detailed_outline:
+                                if isinstance(section, dict):
+                                    section_title = section.get('section_title', '섹션')
+                                    duration = section.get('duration', '')
+                                    html_content.append(f"<div class='card mt-2 mb-3'>")
+                                    html_content.append(f"<div class='card-header bg-primary text-white'>")
+                                    html_content.append(f"<h6 class='mb-0'>{section_title}")
+                                    if duration:
+                                        html_content.append(f" <small>({duration})</small>")
+                                    html_content.append(f"</h6></div>")
+                                    html_content.append(f"<div class='card-body'>")
+                                    
+                                    # PPT 슬라이드들
+                                    ppt_slides = section.get('ppt_slides', [])
+                                    if ppt_slides:
+                                        for slide in ppt_slides:
+                                            slide_title = slide.get('slide_title', '')
+                                            key_points = slide.get('key_points', [])
+                                            detailed_content = slide.get('detailed_content', '')
+                                            speaker_notes = slide.get('speaker_notes', '')
+                                            
+                                            html_content.append(f"<div class='border-start border-3 border-info ps-3 mb-3'>")
+                                            html_content.append(f"<h6 class='text-primary'>🎯 {slide_title}</h6>")
+                                            
+                                            if key_points:
+                                                html_content.append("<strong>핵심 포인트:</strong>")
+                                                html_content.append("<ul class='mb-2'>")
+                                                for point in key_points:
+                                                    html_content.append(f"<li>{point}</li>")
+                                                html_content.append("</ul>")
+                                            
+                                            if detailed_content:
+                                                html_content.append(f"<div class='mb-2'><strong>상세 내용:</strong> {detailed_content}</div>")
+                                            
+                                            if speaker_notes:
+                                                html_content.append(f"<div class='text-muted small'><strong>발표자 노트:</strong> {speaker_notes}</div>")
+                                            
+                                            html_content.append("</div>")
+                                    
+                                    # 실제 사례와 최신 데이터
+                                    real_examples = section.get('real_examples', '')
+                                    latest_data = section.get('latest_data', '')
+                                    practical_tips = section.get('practical_tips', [])
+                                    
+                                    if real_examples:
+                                        html_content.append(f"<div class='alert alert-success'><strong>🏢 실제 사례:</strong> {real_examples}</div>")
+                                    
+                                    if latest_data:
+                                        html_content.append(f"<div class='alert alert-info'><strong>📈 최신 데이터:</strong> {latest_data}</div>")
+                                    
+                                    if practical_tips:
+                                        html_content.append("<div class='alert alert-warning'><strong>💡 실무 팁:</strong>")
+                                        html_content.append("<ul class='mb-0'>")
+                                        for tip in practical_tips:
+                                            html_content.append(f"<li>{tip}</li>")
+                                        html_content.append("</ul></div>")
+                                    
+                                    html_content.append("</div></div>")
+                        
                         # 실무 적용, 사례 연구 등 추가 정보
                         if 'practical_applications' in lecture:
                             html_content.append(f"<div class='mt-3'><strong>실무 적용:</strong> {lecture['practical_applications']}</div>")
