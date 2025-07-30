@@ -24,38 +24,75 @@ def format_lecture_plan(lecture_plan_data):
     try:
         html_content = []
         
-        # 제목 및 개요
-        if 'title' in lecture_plan_data:
-            html_content.append(f"<h2>{lecture_plan_data['title']}</h2>")
+        # Perplexity AI 형식 처리
+        if 'lecture_overview' in lecture_plan_data:
+            overview = lecture_plan_data['lecture_overview']
+            if 'title' in overview:
+                html_content.append(f"<h2 class='mb-3'>{overview['title']}</h2>")
+            if 'description' in overview:
+                html_content.append(f"<p class='lead'>{overview['description']}</p>")
+            if 'target_audience' in overview:
+                html_content.append(f"<p><strong>대상:</strong> {overview['target_audience']}</p>")
+            if 'duration' in overview:
+                html_content.append(f"<p><strong>시간:</strong> {overview['duration']}</p>")
         
-        # 내용 렌더링
-        if 'content' in lecture_plan_data:
+        # 강의 세션 내용
+        if 'lectures' in lecture_plan_data:
+            lectures = lecture_plan_data['lectures']
+            if isinstance(lectures, list):
+                html_content.append("<h3 class='mt-4 mb-3'>강의 세션</h3>")
+                for i, lecture in enumerate(lectures, 1):
+                    if isinstance(lecture, dict):
+                        html_content.append(f"<div class='mb-4 p-3 bg-light rounded'>")
+                        if 'session_title' in lecture:
+                            html_content.append(f"<h4>{i}강: {lecture['session_title']}</h4>")
+                        if 'duration' in lecture:
+                            html_content.append(f"<p><small class='text-muted'>시간: {lecture['duration']}</small></p>")
+                        if 'content' in lecture:
+                            content = lecture['content']
+                            if isinstance(content, list):
+                                html_content.append("<ul>")
+                                for item in content:
+                                    html_content.append(f"<li>{item}</li>")
+                                html_content.append("</ul>")
+                            else:
+                                html_content.append(f"<p>{content}</p>")
+                        if 'learning_objectives' in lecture:
+                            html_content.append("<strong>학습목표:</strong>")
+                            html_content.append("<ul>")
+                            for obj in lecture['learning_objectives']:
+                                html_content.append(f"<li>{obj}</li>")
+                            html_content.append("</ul>")
+                        html_content.append("</div>")
+        
+        # 기존 content 형식도 지원
+        elif 'content' in lecture_plan_data:
             content = lecture_plan_data['content']
-            # 마크다운 형식의 텍스트를 HTML로 변환
-            content = content.replace('\n## ', '\n<h3>').replace('\n### ', '\n<h4>')
-            content = content.replace('\n- ', '\n<li>').replace('\n* ', '\n<li>')
-            content = content.replace('\n**', '\n<strong>').replace('**', '</strong>')
+            content = content.replace('\n## ', '</p><h3>').replace('\n### ', '</p><h4>')
+            content = content.replace('\n- ', '</p><li>').replace('\n* ', '</p><li>')
+            content = content.replace('\n**', '</p><strong>').replace('**', '</strong>')
             content = content.replace('\n\n', '</p><p>')
-            content = f"<p>{content}</p>"
+            content = f"<div>{content}</div>"
             html_content.append(content)
         
-        # 인용 출처 (Perplexity AI의 경우)
+        # 인용 출처
         if 'citations' in lecture_plan_data and lecture_plan_data['citations']:
-            html_content.append('<h4>참고 자료</h4>')
+            html_content.append('<h4 class="mt-4">참고 자료</h4>')
             html_content.append('<ul>')
             for citation in lecture_plan_data['citations']:
-                html_content.append(f'<li><a href="{citation}" target="_blank">{citation}</a></li>')
+                html_content.append(f'<li><a href="{citation}" target="_blank" class="text-primary">{citation}</a></li>')
             html_content.append('</ul>')
         
         # 생성 정보
         if 'generated_at' in lecture_plan_data:
-            html_content.append(f'<p class="text-muted small mt-3">생성일시: {lecture_plan_data["generated_at"]}</p>')
+            html_content.append(f'<p class="text-muted small mt-4"><i class="fas fa-clock me-1"></i>생성일시: {lecture_plan_data["generated_at"]}</p>')
         
-        return '\n'.join(html_content)
+        result = '\n'.join(html_content)
+        return result if result.strip() else "<p>강의안 내용을 표시할 수 없습니다.</p>"
         
     except Exception as e:
         logger.error(f"Error formatting lecture plan: {str(e)}")
-        return f"<p>강의안 포맷팅 중 오류가 발생했습니다: {str(e)}</p>"
+        return f"<p class='text-danger'>강의안 포맷팅 중 오류가 발생했습니다: {str(e)}</p>"
 
 @app.route('/')
 def dashboard():
