@@ -8,13 +8,21 @@ This is a Flask-based web scraper application designed to extract book informati
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (2025-07-29)
+## Recent Changes (2025-07-30)
 
-✓ Perplexity AI 통합 완료:
-- 5가지 강의안 스타일 (종합형, 슬라이드용, 심화분석, 실전문제, 최신정보인용형)
-- 최신 연구동향과 실무사례 자동 인용 기능
-- 사용자 맞춤설정 (대상수준, 세션수, 시간, 특별강조사항)
-- OpenAI 기본 생성기 대신 Perplexity AI 우선 사용으로 변경
+✓ Perplexity AI 대폭 개선 (2025-07-30):
+- 프롬프트 전면 재작성: 대학원 수준의 상세한 강의안 생성
+- 최소 글자수 요구사항 추가 (개요 300자, 내용 200-300자)
+- JSON 구조 확장: key_concepts, case_studies, practical_applications 등
+- max_tokens 4000 → 8000으로 증가하여 더 풍부한 내용 생성
+- 실무 사례, 최신 연구동향, 업계 트렌드 필수 포함 강화
+- 다중 폴백 시스템: Perplexity → OpenAI → 대안 생성기 순서로 시도
+
+✓ 강의안 표시 시스템 완전 수정:
+- format_lecture_plan 함수 전면 개선으로 빈 콘텐츠 문제 해결
+- Perplexity AI 데이터 구조에 최적화된 HTML 렌더링
+- 강의 세션별 상세 내용, 학습목표, 실무 적용방안 표시
+- 참고자료 및 생성일시 정보 포함
 
 ✓ UI/UX 전면 개편:
 - 첨부된 디자인 파일 기반 밝은 배경 테마로 완전 변경

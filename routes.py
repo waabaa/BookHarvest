@@ -350,7 +350,7 @@ def generate_lecture(book_id):
         
         # Get user preferences from form
         lecture_preferences = {
-            'lecture_style': request.form.get('lecture_style'),
+            'lecture_style': request.form.get('lecture_style', 'comprehensive'),
             'target_level': request.form.get('target_level'),
             'session_count': request.form.get('session_count'),
             'session_duration': request.form.get('session_duration'),
