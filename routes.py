@@ -44,25 +44,71 @@ def format_lecture_plan(lecture_plan_data):
                 for i, lecture in enumerate(lectures, 1):
                     if isinstance(lecture, dict):
                         html_content.append(f"<div class='mb-4 p-3 bg-light rounded'>")
-                        if 'session_title' in lecture:
-                            html_content.append(f"<h4>{i}강: {lecture['session_title']}</h4>")
+                        
+                        # 제목 처리 (여러 형식 지원)
+                        title = lecture.get('session_title') or lecture.get('title', f"{i}강")
+                        html_content.append(f"<h4>{i}강: {title}</h4>")
+                        
+                        # 시간 처리
                         if 'duration' in lecture:
                             html_content.append(f"<p><small class='text-muted'>시간: {lecture['duration']}</small></p>")
-                        if 'content' in lecture:
-                            content = lecture['content']
+                        
+                        # 학습목표 처리 (여러 형식 지원)
+                        objectives = lecture.get('learning_objectives') or lecture.get('objectives', [])
+                        if objectives:
+                            html_content.append("<strong>학습목표:</strong>")
+                            html_content.append("<ul>")
+                            for obj in objectives:
+                                html_content.append(f"<li>{obj}</li>")
+                            html_content.append("</ul>")
+                        
+                        # 내용 처리 (여러 형식 지원)
+                        content = lecture.get('content')
+                        outline = lecture.get('outline')
+                        
+                        if content:
                             if isinstance(content, list):
+                                html_content.append("<div class='mt-3'><strong>강의 내용:</strong></div>")
                                 html_content.append("<ul>")
                                 for item in content:
                                     html_content.append(f"<li>{item}</li>")
                                 html_content.append("</ul>")
                             else:
-                                html_content.append(f"<p>{content}</p>")
-                        if 'learning_objectives' in lecture:
-                            html_content.append("<strong>학습목표:</strong>")
-                            html_content.append("<ul>")
-                            for obj in lecture['learning_objectives']:
-                                html_content.append(f"<li>{obj}</li>")
-                            html_content.append("</ul>")
+                                html_content.append(f"<div class='mt-3'><strong>강의 내용:</strong> {content}</div>")
+                        elif outline:
+                            html_content.append("<div class='mt-3'><strong>강의 구성:</strong></div>")
+                            if isinstance(outline, list):
+                                for section in outline:
+                                    if isinstance(section, dict):
+                                        section_title = section.get('section', '섹션')
+                                        section_content = section.get('content', '')
+                                        section_time = section.get('time', '')
+                                        html_content.append(f"<div class='ms-3 mb-2'>")
+                                        html_content.append(f"<strong>{section_title}</strong>")
+                                        if section_time:
+                                            html_content.append(f" <small class='text-muted'>({section_time})</small>")
+                                        if section_content:
+                                            html_content.append(f"<br>{section_content}")
+                                        html_content.append(f"</div>")
+                                    else:
+                                        html_content.append(f"<div class='ms-3 mb-2'>{section}</div>")
+                        
+                        # 실무 적용, 사례 연구 등 추가 정보
+                        if 'practical_applications' in lecture:
+                            html_content.append(f"<div class='mt-3'><strong>실무 적용:</strong> {lecture['practical_applications']}</div>")
+                        
+                        if 'case_studies' in lecture:
+                            html_content.append(f"<div class='mt-3'><strong>사례 연구:</strong> {lecture['case_studies']}</div>")
+                        
+                        if 'key_concepts' in lecture:
+                            concepts = lecture['key_concepts']
+                            if concepts:
+                                html_content.append("<div class='mt-3'><strong>핵심 개념:</strong></div>")
+                                html_content.append("<ul class='list-inline'>")
+                                for concept in concepts:
+                                    html_content.append(f"<li class='list-inline-item'><span class='badge bg-secondary'>{concept}</span></li>")
+                                html_content.append("</ul>")
+                        
                         html_content.append("</div>")
         
         # 기존 content 형식도 지원
