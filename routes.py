@@ -62,6 +62,9 @@ def format_lecture_plan(lecture_plan_data):
                                 html_content.append(f"<li>{obj}</li>")
                             html_content.append("</ul>")
                         
+                        # PPT 슬라이드 구성 처리 (새로운 상세 형식) - 최우선 처리
+                        detailed_outline = lecture.get('detailed_outline', [])
+                        
                         # 내용 처리 (여러 형식 지원)
                         content = lecture.get('content')
                         outline = lecture.get('outline')
@@ -75,7 +78,7 @@ def format_lecture_plan(lecture_plan_data):
                                 html_content.append("</ul>")
                             else:
                                 html_content.append(f"<div class='mt-3'><strong>강의 내용:</strong> {content}</div>")
-                        elif outline:
+                        elif outline and not detailed_outline:  # detailed_outline가 없을 때만 기존 outline 표시
                             html_content.append("<div class='mt-3'><strong>강의 구성:</strong></div>")
                             if isinstance(outline, list):
                                 for section in outline:
@@ -92,9 +95,7 @@ def format_lecture_plan(lecture_plan_data):
                                         html_content.append(f"</div>")
                                     else:
                                         html_content.append(f"<div class='ms-3 mb-2'>{section}</div>")
-                        
-                        # PPT 슬라이드 구성 처리 (새로운 상세 형식)
-                        detailed_outline = lecture.get('detailed_outline', [])
+                        # 새로운 PPT 슬라이드 구성이 있으면 이를 우선 표시
                         if detailed_outline:
                             html_content.append("<div class='mt-3'><strong>📊 PPT 슬라이드 구성:</strong></div>")
                             for section in detailed_outline:
@@ -129,7 +130,8 @@ def format_lecture_plan(lecture_plan_data):
                                                 html_content.append("</ul>")
                                             
                                             if detailed_content:
-                                                html_content.append(f"<div class='mb-2'><strong>상세 내용:</strong> {detailed_content}</div>")
+                                                html_content.append(f"<div class='mb-2'><strong>상세 내용:</strong></div>")
+                                                html_content.append(f"<div class='ms-2'>{detailed_content}</div>")
                                             
                                             if speaker_notes:
                                                 html_content.append(f"<div class='text-muted small'><strong>발표자 노트:</strong> {speaker_notes}</div>")
@@ -475,26 +477,33 @@ def generate_lecture(book_id):
         lecture_plan = None
         error_messages = []
         
-        # 1차 시도: Perplexity AI 생성기 (최신 정보 포함)
+        # 1차 시도: Perplexity AI 생성기 (최신 정보 포함) - 강제 우선 실행
         try:
-            from perplexity_generator import get_perplexity_generator
-            perplexity_gen = get_perplexity_generator()
+            from perplexity_generator import PerplexityLectureGenerator
             
-            if perplexity_gen:
-                print("🔄 Perplexity AI 생성기 시도 중...")
-                lecture_plan = perplexity_gen.generate_lecture_plan(book_data, lecture_preferences)
-                
-                if lecture_plan and not lecture_plan.get('error'):
-                    print("✅ Perplexity AI 생성기 성공")
-                    flash('최신 정보가 포함된 강의안을 생성했습니다!', 'success')
-                else:
-                    error_messages.append("Perplexity AI 생성기 실패")
-                    lecture_plan = None
+            # Perplexity API 키 확인
+            import os
+            if not os.environ.get('PERPLEXITY_API_KEY'):
+                raise Exception("PERPLEXITY_API_KEY 환경변수가 설정되지 않았습니다")
+            
+            perplexity_gen = PerplexityLectureGenerator()
+            print("🔄 Perplexity AI 생성기 시도 중...")
+            
+            # 강제로 comprehensive 스타일 사용
+            lecture_preferences['lecture_style'] = 'comprehensive'
+            lecture_plan = perplexity_gen.generate_lecture_plan(book_data, lecture_preferences)
+            
+            if lecture_plan and not lecture_plan.get('error') and 'lectures' in lecture_plan:
+                print("✅ Perplexity AI 생성기 성공")
+                flash('PPT 준비 완료! 최신 정보가 포함된 상세한 강의안을 생성했습니다!', 'success')
             else:
-                error_messages.append("Perplexity AI 초기화 실패")
+                error_msg = lecture_plan.get('error', '알 수 없는 오류') if lecture_plan else 'None 응답'
+                error_messages.append(f"Perplexity AI 응답 문제: {error_msg}")
+                lecture_plan = None
                 
         except Exception as perplexity_error:
             error_messages.append(f"Perplexity AI 오류: {str(perplexity_error)}")
+            print(f"❌ Perplexity 오류: {perplexity_error}")
             lecture_plan = None
         
         # 2차 시도: 기본 생성기 (OpenAI)
