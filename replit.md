@@ -1,14 +1,42 @@
-# CommBooks Scraper
+# AI전문 교육 플랫폼
 
 ## Overview
 
-This is a Flask-based web scraper application designed to extract book information from the CommBooks website (commbooks.com). The application provides a dashboard interface for managing scraping jobs, viewing scraped books, and monitoring job progress. It scrapes book details including titles, authors, descriptions, reviews, and cover images from the AI book collection pages. The system now includes AI-powered lecture plan generation using OpenAI's GPT-4 to create 3-4 session course outlines based on book content.
+한국어 전문 교육 플랫폼이 메인 사이트로 전환된 통합 교육 시스템입니다. Korean Language Tutor의 교육 구조와 내용을 메인 사이트로 구축하고, 기존 CommBooks 스크래핑 및 AI 강의안 생성 기능은 서브 메뉴(/commbooks)로 제공하는 종합 교육 플랫폼입니다. AI 전문가 과정, 창의적 사고 개발, 리더십 과정 등 다양한 교육 프로그램과 함께 AI 기반 자동 교안 생성 시스템을 통합 제공합니다.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (2025-07-30)
+## Recent Changes (2025-07-31)
+
+✓ 프로젝트 구조 완전 변경 - Korean Language Tutor 통합 (2025-07-31):
+- Korean Language Tutor 교육 구조를 메인 사이트로 전환 완료
+- CommBooks 기능을 /commbooks 서브메뉴로 이동
+- 통합된 네비게이션 구조로 교육 과정과 AI 시스템 연결
+- 새로운 홈페이지: AI전문 교육 플랫폼 컨셉으로 변경
+- 강사진, 교육과정, AI 교안 시스템의 유기적 통합
+
+✓ 새로운 메인 사이트 구조 구축:
+- 홈페이지: AI 시대 교육 플랫폼 소개
+- 강사진: AI, 데이터사이언스, 비즈니스, UX 전문가
+- 교육과정: AI 전문가/창의적 사고/리더십 개발 과정
+- AI 교안 시스템: CommBooks 스크래핑 및 강의안 생성
+
+✓ URL 구조 재편성:
+- / : 메인 홈페이지 (Korean Language Tutor 기반)
+- /authors : 강사진 소개
+- /curriculums : 교육 과정 소개
+- /commbooks : CommBooks 스크래핑 대시보드
+- /commbooks/books : 수집된 책 목록
+- /commbooks/book/<id> : 책 상세 정보
+
+✓ 기존 CommBooks 기능 유지:
+- 모든 스크래핑 기능 그대로 유지
+- AI 강의안 생성 기능 그대로 유지
+- 경로만 /commbooks/* 로 변경
+
+## Previous Changes (2025-07-30)
 
 ✓ Perplexity AI 혁신적 개선 - PPT 준비 강의안 (2025-07-30):
 - PPT 슬라이드별 구성: 제목, 핵심 포인트, 상세 내용, 발표자 노트 포함
@@ -99,10 +127,12 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 - **Template Engine**: Jinja2 templates with Flask
-- **UI Framework**: Bootstrap 5 with dark theme
+- **Main Site Design**: 밝은 테마의 현대적 교육 플랫폼 디자인
+- **UI Framework**: Bootstrap 5 with 핑크/자홍색 primary 컬러 (#e91e63)
+- **Navigation**: 통합 네비게이션 (교육과정, 강사진, AI 교안 시스템)
 - **Icons**: Font Awesome for UI icons
-- **Charts**: Chart.js for progress visualization
-- **Styling**: Custom CSS with responsive design
+- **Charts**: Chart.js for CommBooks 진행률 시각화
+- **Responsive**: 모바일 최적화된 반응형 디자인
 
 ### Database Schema
 The application uses two main database models:
@@ -139,12 +169,17 @@ The application uses two main database models:
 - **Customization**: Adapts lecture content based on book topic and complexity
 
 ### Web Interface (routes.py)
-- **Dashboard Route**: Main interface showing statistics and recent activity
-- **Job Management**: Start new scraping jobs with validation
-- **Book Details**: Enhanced book view with AI lecture plan integration
-- **Lecture Generation**: On-demand AI course creation from book content
-- **API Endpoints**: RESTful endpoints for status updates and data retrieval
-- **Progress Monitoring**: Real-time job progress tracking
+- **Main Site Routes**: Korean Language Tutor 기반 교육 플랫폼 홈페이지
+  - / : 메인 홈페이지 (교육 과정, 강사진, AI 시스템 소개)
+  - /authors : 전문 강사진 소개 페이지
+  - /curriculums : 교육 과정 상세 안내
+- **CommBooks Routes**: AI 교안 생성 시스템 (/commbooks/* 경로)
+  - /commbooks : 스크래핑 대시보드 및 통계
+  - /commbooks/books : 수집된 책 목록 및 검색
+  - /commbooks/book/<id> : 책 상세 정보 및 강의안 생성
+  - /commbooks/start_scraping : 새 스크래핑 작업 시작
+- **API Endpoints**: CommBooks 관련 RESTful API (/api/commbooks/*)
+- **Progress Monitoring**: 실시간 스크래핑 진행률 추적
 
 ### Models (models.py)
 - **Database Models**: SQLAlchemy models with proper relationships
@@ -207,4 +242,4 @@ The application uses two main database models:
 - **Error Handling**: Graceful error handling with user feedback
 - **Rate Limiting**: Built-in delays to prevent overwhelming target website
 
-The application is designed to be easily deployable to platforms like Replit, Heroku, or similar PaaS providers with minimal configuration changes.
+통합 교육 플랫폼은 Korean Language Tutor의 교육 구조와 CommBooks의 AI 기술을 결합하여, 포괄적인 AI 시대 교육 솔루션을 제공합니다. Replit, Heroku 등의 PaaS 플랫폼에 최소 설정으로 배포 가능하도록 설계되었습니다.
