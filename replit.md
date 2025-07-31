@@ -36,6 +36,13 @@ Preferred communication style: Simple, everyday language.
 - 책 상세 페이지에서 자동 추출 및 표시
 - 저자명 옆에 작은 원형 프로필 사진, 책 표지 아래에 큰 저자 사진 카드 표시
 
+✓ Korean Language Tutor 통합 패키지 준비 완료 (2025-07-31):
+- 모든 스크래핑 데이터 및 이미지 백업 완료
+- 통합용 Python 모듈, 템플릿, 라우트 코드 패키징
+- 상세한 통합 가이드 및 단계별 매뉴얼 작성
+- korean_tutor_integration_package.tar.gz 통합 패키지 생성
+- 데이터베이스 백업 및 이미지 파일 압축 완료
+
 ✓ 전체 시스템 기능 완성 (2025-07-31):
 - 스크래핑 데이터 처리 옵션: skip/update 선택 기능 구현
 - AI 정보 숨김 처리: 강의안에서 AI 관련 정보 자동 필터링
