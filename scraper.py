@@ -647,7 +647,7 @@ class CommBooksScraper:
                 job.completed_at = datetime.utcnow()
                 db.session.commit()
 
-def start_scraping_job(start_page, end_page, series_url=None, series_name=None):
+def start_scraping_job(start_page, end_page, series_url=None, series_name=None, data_handling="skip"):
     """Start a new scraping job"""
     job = ScrapingJob()
     job.start_page = start_page
@@ -660,7 +660,7 @@ def start_scraping_job(start_page, end_page, series_url=None, series_name=None):
     
     # Start scraping in background thread
     scraper = CommBooksScraper()
-    thread = threading.Thread(target=scraper.run_scraping_job, args=(job.id,))
+    thread = threading.Thread(target=scraper.run_scraping_job, args=(job.id, data_handling))
     thread.daemon = True
     thread.start()
     

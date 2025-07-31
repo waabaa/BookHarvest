@@ -236,12 +236,12 @@ def start_scraping():
     try:
         start_page = int(request.form.get('start_page', 1))
         end_page = int(request.form.get('end_page', 26))
-        clear_existing = request.form.get('clear_existing') == 'on'
-        scraping_password = request.form.get('scraping_password', '')
+        data_handling = request.form.get('data_handling', 'skip')
+        password = request.form.get('password', '')
         series_url = request.form.get('series_url', '').strip()
         
         # 스크래핑 비밀번호 확인
-        if scraping_password != '0438':
+        if password != '0438':
             flash('스크래핑 비밀번호가 올바르지 않습니다.', 'error')
             return redirect(url_for('dashboard'))
         
@@ -255,8 +255,8 @@ def start_scraping():
             flash('이미 실행 중인 스크래핑 작업이 있습니다. 완료될 때까지 기다려주세요.', 'warning')
             return redirect(url_for('dashboard'))
         
-        # Clear existing data if requested (with password check)
-        if clear_existing:
+        # Handle existing data based on user choice
+        if data_handling == 'clear':
             # 비밀번호 확인
             clear_password = request.form.get('clear_password', '')
             if clear_password != '0438':
@@ -300,8 +300,8 @@ def start_scraping():
             except Exception:
                 series_name = "인공지능총서"
         
-        # Start new job
-        job = start_scraping_job(start_page, end_page, series_url, series_name)
+        # Start new job with data handling option
+        job = start_scraping_job(start_page, end_page, series_url, series_name, data_handling)
         if series_url:
             flash(f'{series_name} 시리즈 {start_page}-{end_page}페이지 스크래핑 작업이 시작되었습니다!', 'success')
         else:
@@ -778,3 +778,154 @@ def api_stats():
         'running_jobs': running_jobs,
         'failed_jobs': failed_jobs
     })
+
+@app.route('/export_all_data')
+def export_all_data():
+    """전체 스크래핑 데이터를 ZIP으로 다운로드"""
+    try:
+        from export_manager import ExportManager
+        
+        books = Book.query.all()
+        if not books:
+            flash('내보낼 데이터가 없습니다.', 'warning')
+            return redirect(url_for('dashboard'))
+        
+        export_manager = ExportManager()
+        zip_path = export_manager.export_all_data(books, 
+                                                include_images=True, 
+                                                include_pdfs=True, 
+                                                include_lectures=True)
+        
+        if zip_path and os.path.exists(zip_path):
+            return send_file(zip_path, 
+                           as_attachment=True, 
+                           download_name=f'commbooks_전체데이터_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip',
+                           mimetype='application/zip')
+        else:
+            flash('데이터 내보내기에 실패했습니다.', 'error')
+            return redirect(url_for('dashboard'))
+    
+    except Exception as e:
+        logger.error(f"Error exporting all data: {str(e)}")
+        flash(f'데이터 내보내기 중 오류가 발생했습니다: {str(e)}', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/export_lectures_only')
+def export_lectures_only():
+    """강의안만 따로 ZIP으로 다운로드"""
+    try:
+        from export_manager import ExportManager
+        
+        books = Book.query.filter(Book.lecture_plan.isnot(None)).all()
+        if not books:
+            flash('내보낼 강의안이 없습니다.', 'warning')
+            return redirect(url_for('dashboard'))
+        
+        export_manager = ExportManager()
+        zip_path = export_manager.export_lectures_only(books)
+        
+        if zip_path and os.path.exists(zip_path):
+            return send_file(zip_path, 
+                           as_attachment=True, 
+                           download_name=f'commbooks_강의안_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip',
+                           mimetype='application/zip')
+        else:
+            flash('강의안 내보내기에 실패했습니다.', 'error')
+            return redirect(url_for('dashboard'))
+    
+    except Exception as e:
+        logger.error(f"Error exporting lectures: {str(e)}")
+        flash(f'강의안 내보내기 중 오류가 발생했습니다: {str(e)}', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/download_lecture_text/<int:book_id>')
+def download_lecture_text(book_id):
+    """개별 책의 강의안을 텍스트 파일로 다운로드"""
+    try:
+        book = Book.query.get_or_404(book_id)
+        
+        if not book.lecture_plan:
+            flash('강의안이 생성되지 않았습니다.', 'warning')
+            return redirect(url_for('book_detail', book_id=book_id))
+        
+        # 텍스트 파일 생성
+        import io
+        import json
+        from datetime import datetime
+        
+        text_content = f"강의안: {book.title}\n"
+        text_content += f"저자: {book.author}\n"
+        text_content += f"시리즈: {book.series_name or '미상'}\n"
+        text_content += "=" * 50 + "\n\n"
+        
+        # 강의안 내용 추가 (AI 정보 제거)
+        try:
+            lecture_data = json.loads(book.lecture_plan)
+            
+            # 강의 개요
+            if 'lecture_overview' in lecture_data:
+                overview = lecture_data['lecture_overview']
+                text_content += "강의 개요\n"
+                text_content += "-" * 20 + "\n"
+                if 'title' in overview:
+                    text_content += f"제목: {overview['title']}\n"
+                if 'description' in overview:
+                    text_content += f"설명: {overview['description']}\n"
+                if 'target_audience' in overview:
+                    text_content += f"대상: {overview['target_audience']}\n"
+                if 'duration' in overview:
+                    text_content += f"시간: {overview['duration']}\n"
+                text_content += "\n"
+            
+            # 강의 세션들
+            if 'lectures' in lecture_data:
+                lectures = lecture_data['lectures']
+                if isinstance(lectures, list):
+                    text_content += "강의 세션\n"
+                    text_content += "-" * 20 + "\n"
+                    for i, lecture in enumerate(lectures, 1):
+                        if isinstance(lecture, dict):
+                            title = lecture.get('session_title') or lecture.get('title', f"{i}강")
+                            text_content += f"\n{i}강: {title}\n"
+                            
+                            if 'duration' in lecture:
+                                text_content += f"시간: {lecture['duration']}\n"
+                            
+                            objectives = lecture.get('learning_objectives') or lecture.get('objectives', [])
+                            if objectives:
+                                text_content += "학습목표:\n"
+                                for obj in objectives:
+                                    text_content += f"- {obj}\n"
+                            
+                            content = lecture.get('content')
+                            if content:
+                                text_content += "강의 내용:\n"
+                                if isinstance(content, list):
+                                    for item in content:
+                                        text_content += f"- {item}\n"
+                                else:
+                                    text_content += f"{content}\n"
+                            
+                            text_content += "\n"
+            
+        except json.JSONDecodeError:
+            text_content += "강의안 내용을 읽을 수 없습니다.\n"
+        
+        # 파일 생성 및 다운로드
+        output = io.BytesIO()
+        output.write(text_content.encode('utf-8'))
+        output.seek(0)
+        
+        filename = f"{book.title.replace(' ', '_')}_강의안.txt"
+        
+        return send_file(
+            io.BytesIO(text_content.encode('utf-8')),
+            as_attachment=True,
+            download_name=filename,
+            mimetype='text/plain'
+        )
+        
+    except Exception as e:
+        logger.error(f"Error downloading lecture text: {str(e)}")
+        flash(f'강의안 다운로드 중 오류가 발생했습니다: {str(e)}', 'error')
+        return redirect(url_for('book_detail', book_id=book_id))
