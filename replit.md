@@ -24,6 +24,11 @@ Preferred communication style: Simple, everyday language.
 - 강의 세션별 상세 내용, 학습목표, 실무 적용방안 표시
 - 참고자료 및 생성일시 정보 포함
 
+✓ 책 이미지 표시 개선 (2025-07-31):
+- object-fit: cover → contain으로 변경하여 책 전체가 보이도록 수정
+- 첫 페이지와 상세 페이지 모두 세로폭에 맞춰 전체 표시
+- 배경색 추가로 빈 공간 자연스럽게 처리
+
 ✓ UI/UX 전면 개편:
 - 첨부된 디자인 파일 기반 밝은 배경 테마로 완전 변경
 - 핑크/자홍색 계열 primary 컬러 적용 (#e91e63)
