@@ -789,6 +789,28 @@ def api_stats():
         'failed_jobs': failed_jobs
     })
 
+@app.route('/api/job_status')
+def api_job_status():
+    """Get current job status for AJAX updates"""
+    current_job = ScrapingJob.query.filter_by(status='running').first()
+    
+    if current_job:
+        return jsonify({
+            'current_job': {
+                'id': current_job.id,
+                'status': current_job.status,
+                'current_page': current_job.current_page,
+                'start_page': current_job.start_page,
+                'end_page': current_job.end_page,
+                'total_books_found': current_job.total_books_found,
+                'books_scraped': current_job.books_scraped,
+                'books_failed': current_job.books_failed,
+                'series_name': current_job.series_name
+            }
+        })
+    else:
+        return jsonify({'current_job': None})
+
 @app.route('/export_all_data')
 def export_all_data():
     """전체 스크래핑 데이터를 ZIP으로 다운로드"""

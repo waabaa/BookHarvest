@@ -62,7 +62,7 @@
                         {% if current_job.series_name %}
                         <p><strong>시리즈:</strong> {{ current_job.series_name }}</p>
                         {% endif %}
-                        <p><strong>현재 페이지:</strong> {{ current_job.current_page }}</p>
+                        <p><strong>현재 페이지:</strong> <span data-stat="current_page">{{ current_job.current_page }}</span></p>
                         <p><strong>상태:</strong> 
                             <span class="badge bg-primary">{{ current_job.status }}</span>
                         </p>
@@ -79,15 +79,15 @@
                         <div class="row text-center">
                             <div class="col">
                                 <small class="text-muted">발견</small><br>
-                                <strong>{{ current_job.total_books_found }}</strong>
+                                <strong data-stat="total_books_found">{{ current_job.total_books_found }}</strong>
                             </div>
                             <div class="col">
                                 <small class="text-muted">성공</small><br>
-                                <strong class="text-success">{{ current_job.books_scraped }}</strong>
+                                <strong class="text-success" data-stat="books_scraped">{{ current_job.books_scraped }}</strong>
                             </div>
                             <div class="col">
                                 <small class="text-muted">실패</small><br>
-                                <strong class="text-danger">{{ current_job.books_failed }}</strong>
+                                <strong class="text-danger" data-stat="books_failed">{{ current_job.books_failed }}</strong>
                             </div>
                         </div>
                     </div>
@@ -318,7 +318,7 @@
 // 현재 작업 진행률 차트
 {% if current_job %}
 const ctx = document.getElementById('progressChart').getContext('2d');
-const chart = new Chart(ctx, {
+progressChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
         labels: ['성공', '실패', '남은 작업'],
@@ -353,13 +353,75 @@ const chart = new Chart(ctx, {
     }
 });
 
-// 자동 새로고침 (10초마다, 실행중일 때만)
-setInterval(function() {
-    location.reload();
-}, 10000);
+// AJAX로 진행 상태만 업데이트 (깜빡임 없음)
+let progressChart = null;
+let updateInterval = null;
 
-// 진행중임을 알리는 알림 표시
-$(document).ready(function() {
+function updateProgressOnly() {
+    fetch('/api/job_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.current_job) {
+                // 진행률 업데이트
+                const progressBar = document.querySelector('.progress-bar');
+                if (progressBar && data.current_job.total_books_found > 0) {
+                    const progress = ((data.current_job.books_scraped + data.current_job.books_failed) / data.current_job.total_books_found * 100);
+                    progressBar.style.width = progress + '%';
+                }
+                
+                // 통계 숫자만 업데이트
+                const statsElements = {
+                    'total_books_found': data.current_job.total_books_found,
+                    'books_scraped': data.current_job.books_scraped,
+                    'books_failed': data.current_job.books_failed,
+                    'current_page': data.current_job.current_page
+                };
+                
+                Object.keys(statsElements).forEach(key => {
+                    const elements = document.querySelectorAll(`[data-stat="${key}"]`);
+                    elements.forEach(el => {
+                        el.textContent = statsElements[key];
+                    });
+                });
+                
+                // 차트 업데이트
+                if (progressChart && data.current_job.total_books_found > 0) {
+                    const remaining = data.current_job.total_books_found - data.current_job.books_scraped - data.current_job.books_failed;
+                    progressChart.data.datasets[0].data = [
+                        data.current_job.books_scraped,
+                        data.current_job.books_failed,
+                        remaining > 0 ? remaining : 0
+                    ];
+                    progressChart.update('none'); // 애니메이션 없이 즉시 업데이트
+                }
+                
+                // 작업이 완료되면 전체 페이지 새로고침 (한 번만)
+                if (data.current_job.status === 'completed') {
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                }
+            } else {
+                // 진행중인 작업이 없으면 업데이트 중지하고 페이지 새로고침
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                }
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.log('Progress update failed:', error);
+        });
+}
+
+// 5초마다 AJAX 업데이트 (깜빡임 없음)
+updateInterval = setInterval(updateProgressOnly, 5000);
+
+// 첫 번째 업데이트 즉시 실행
+updateProgressOnly();
+
+// 진행중임을 알리는 알림 표시 (순수 JavaScript)
+document.addEventListener('DOMContentLoaded', function() {
     // Toast 알림 생성
     const toastHtml = `
         <div class="position-fixed top-0 end-0 p-3" style="z-index: 1055">
@@ -367,7 +429,7 @@ $(document).ready(function() {
                 <div class="d-flex">
                     <div class="toast-body">
                         <i class="fas fa-cog fa-spin me-2"></i>
-                        스크래핑이 진행 중입니다. 10초마다 자동 새로고침됩니다.
+                        스크래핑이 진행 중입니다. 5초마다 자동으로 업데이트됩니다.
                     </div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" 
                             data-bs-dismiss="toast"></button>
@@ -375,7 +437,7 @@ $(document).ready(function() {
             </div>
         </div>`;
     
-    $('body').append(toastHtml);
+    document.body.insertAdjacentHTML('beforeend', toastHtml);
 });
 {% endif %}
 
