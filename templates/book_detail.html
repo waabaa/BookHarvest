@@ -26,6 +26,23 @@
                 <i class="fas fa-book fa-5x text-muted"></i>
             </div>
         {% endif %}
+        
+        <!-- 저자 사진 표시 (책 표지 아래) -->
+        {% if book.author_photo_path %}
+        <div class="text-center mt-3">
+            <div class="card" style="max-width: 200px; margin: 0 auto;">
+                <div class="card-body p-3">
+                    <img src="{{ url_for('static', filename=book.author_photo_path) }}" 
+                         alt="{{ book.author }}" 
+                         class="img-fluid rounded shadow-sm mb-2"
+                         style="max-height: 200px; object-fit: cover;">
+                    {% if book.author %}
+                    <h6 class="mb-0 text-muted small">{{ book.author }}</h6>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
     <div class="col-md-9">
         <div class="card h-100">
@@ -34,7 +51,16 @@
                 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <p><strong>저자:</strong> {{ book.author or '저자 미상' }}</p>
+                        <div class="d-flex align-items-center mb-2">
+                            <strong class="me-2">저자:</strong>
+                            {% if book.author_photo_rounded_path %}
+                                <img src="{{ url_for('static', filename=book.author_photo_rounded_path) }}" 
+                                     alt="{{ book.author }}" 
+                                     class="me-2"
+                                     style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                            {% endif %}
+                            <span>{{ book.author or '저자 미상' }}</span>
+                        </div>
                         {% if book.publish_date %}
                         <p><strong>발행일:</strong> {{ book.publish_date }}</p>
                         {% endif %}

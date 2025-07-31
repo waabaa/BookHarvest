@@ -29,6 +29,13 @@ Preferred communication style: Simple, everyday language.
 - 첫 페이지와 상세 페이지 모두 세로폭에 맞춰 전체 표시
 - 배경색 추가로 빈 공간 자연스럽게 처리
 
+✓ 저자 사진 자동 추출 기능 구현 (2025-07-31):
+- ImageProcessor 클래스로 책 표지에서 저자 사진 영역 자동 감지 및 추출
+- 원형 저자 사진 생성 기능 (프로필용)
+- 데이터베이스에 저자 사진 경로 저장 (author_photo_path, author_photo_rounded_path)
+- 책 상세 페이지에서 자동 추출 및 표시
+- 저자명 옆에 작은 원형 프로필 사진, 책 표지 아래에 큰 저자 사진 카드 표시
+
 ✓ UI/UX 전면 개편:
 - 첨부된 디자인 파일 기반 밝은 배경 테마로 완전 변경
 - 핑크/자홍색 계열 primary 컬러 적용 (#e91e63)

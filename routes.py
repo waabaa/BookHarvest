@@ -417,6 +417,24 @@ def book_detail(book_id):
     # Get PDF attachments for this book
     pdf_attachments = PDFAttachment.query.filter_by(book_id=book_id).all()
     
+    # 저자 사진이 없으면 자동 추출 시도
+    if book.cover_image_path and not book.author_photo_path:
+        try:
+            from image_processor import ImageProcessor
+            processor = ImageProcessor()
+            
+            cover_path = os.path.join('static', book.cover_image_path)
+            if os.path.exists(cover_path):
+                result = processor.process_book_cover(cover_path, book.id)
+                
+                if result['author_photo']:
+                    book.author_photo_path = result['author_photo']
+                    book.author_photo_rounded_path = result['author_photo_rounded']
+                    db.session.commit()
+                    print(f"저자 사진 자동 추출 완료: {book.title}")
+        except Exception as e:
+            print(f"저자 사진 추출 중 오류: {e}")
+    
     # Parse lecture plan if it exists
     lecture_plan_data = None
     lecture_plan_content = ""
