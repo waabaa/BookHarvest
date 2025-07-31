@@ -557,7 +557,7 @@ class CommBooksScraper:
             db.session.rollback()
             return None
     
-    def run_scraping_job(self, job_id):
+    def run_scraping_job(self, job_id, data_handling="skip"):
         """Run a scraping job in background"""
         from app import app
         

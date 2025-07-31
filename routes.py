@@ -211,9 +211,13 @@ def dashboard():
     # Get latest scraping job
     latest_job = ScrapingJob.query.order_by(ScrapingJob.started_at.desc()).first()
     
+    # Get currently running job
+    current_job = ScrapingJob.query.filter_by(status='running').first()
+    
     # Get book statistics
     total_books = Book.query.count()
     recent_books = Book.query.order_by(Book.scraped_at.desc()).limit(10).all()
+    lecture_plans_count = Book.query.filter(Book.lecture_plan.isnot(None)).count()
     
     # Get job statistics
     total_jobs = ScrapingJob.query.count()
@@ -221,14 +225,20 @@ def dashboard():
     running_jobs = ScrapingJob.query.filter_by(status='running').count()
     failed_jobs = ScrapingJob.query.filter_by(status='failed').count()
     
+    # Get recent jobs for display
+    recent_jobs = ScrapingJob.query.order_by(ScrapingJob.started_at.desc()).limit(5).all()
+    
     return render_template('dashboard.html',
                          latest_job=latest_job,
+                         current_job=current_job,
                          total_books=total_books,
                          recent_books=recent_books,
+                         lecture_plans_count=lecture_plans_count,
                          total_jobs=total_jobs,
                          completed_jobs=completed_jobs,
                          running_jobs=running_jobs,
-                         failed_jobs=failed_jobs)
+                         failed_jobs=failed_jobs,
+                         recent_jobs=recent_jobs)
 
 @app.route('/start_scraping', methods=['POST'])
 def start_scraping():
@@ -425,11 +435,11 @@ def book_detail(book_id):
             
             cover_path = os.path.join('static', book.cover_image_path)
             if os.path.exists(cover_path):
-                result = processor.process_book_cover(cover_path, book.id)
+                result = processor.extract_author_photo(cover_path, book.id)
                 
-                if result['author_photo']:
-                    book.author_photo_path = result['author_photo']
-                    book.author_photo_rounded_path = result['author_photo_rounded']
+                if result and result.get('author_photo_path'):
+                    book.author_photo_path = result['author_photo_path']
+                    book.author_photo_rounded_path = result['author_photo_rounded_path']
                     db.session.commit()
                     print(f"저자 사진 자동 추출 완료: {book.title}")
         except Exception as e:

@@ -353,10 +353,30 @@ const chart = new Chart(ctx, {
     }
 });
 
-// 자동 새로고침 (30초마다)
+// 자동 새로고침 (10초마다, 실행중일 때만)
 setInterval(function() {
     location.reload();
-}, 30000);
+}, 10000);
+
+// 진행중임을 알리는 알림 표시
+$(document).ready(function() {
+    // Toast 알림 생성
+    const toastHtml = `
+        <div class="position-fixed top-0 end-0 p-3" style="z-index: 1055">
+            <div class="toast show align-items-center text-white bg-info border-0" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-cog fa-spin me-2"></i>
+                        스크래핑이 진행 중입니다. 10초마다 자동 새로고침됩니다.
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" 
+                            data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        </div>`;
+    
+    $('body').append(toastHtml);
+});
 {% endif %}
 
 // 비밀번호 섹션 표시/숨김
