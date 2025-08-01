@@ -1,93 +1,14 @@
-# AI전문 교육 플랫폼
+# CommBooks Scraper
 
 ## Overview
 
-한국어 전문 교육 플랫폼이 메인 사이트로 전환된 통합 교육 시스템입니다. Korean Language Tutor의 교육 구조와 내용을 메인 사이트로 구축하고, 기존 CommBooks 스크래핑 및 AI 강의안 생성 기능은 서브 메뉴(/commbooks)로 제공하는 종합 교육 플랫폼입니다. AI 전문가 과정, 창의적 사고 개발, 리더십 과정 등 다양한 교육 프로그램과 함께 AI 기반 자동 교안 생성 시스템을 통합 제공합니다.
+This is a Flask-based web scraper application designed to extract book information from the CommBooks website (commbooks.com). The application provides a dashboard interface for managing scraping jobs, viewing scraped books, and monitoring job progress. It scrapes book details including titles, authors, descriptions, reviews, and cover images from the AI book collection pages. The system now includes AI-powered lecture plan generation using OpenAI's GPT-4 to create 3-4 session course outlines based on book content.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (2025-07-31)
-
-✓ 프로젝트 구조 완전 변경 - Korean Language Tutor 통합 (2025-07-31):
-- Korean Language Tutor 교육 구조를 메인 사이트로 전환 완료
-- CommBooks 기능을 /commbooks 서브메뉴로 이동
-- 통합된 네비게이션 구조로 교육 과정과 AI 시스템 연결
-- 새로운 홈페이지: AI전문 교육 플랫폼 컨셉으로 변경
-- 강사진, 교육과정, AI 교안 시스템의 유기적 통합
-
-✓ 새로운 메인 사이트 구조 구축:
-- 홈페이지: AI 시대 교육 플랫폼 소개
-- 강사진: AI, 데이터사이언스, 비즈니스, UX 전문가
-- 교육과정: AI 전문가/창의적 사고/리더십 개발 과정
-- AI 교안 시스템: CommBooks 스크래핑 및 강의안 생성
-
-✓ URL 구조 재편성:
-- / : 메인 홈페이지 (Korean Language Tutor 기반)
-- /authors : 강사진 소개
-- /curriculums : 교육 과정 소개
-- /commbooks : CommBooks 스크래핑 대시보드
-- /commbooks/books : 수집된 책 목록
-- /commbooks/book/<id> : 책 상세 정보
-
-✓ 기존 CommBooks 기능 유지:
-- 모든 스크래핑 기능 그대로 유지
-- AI 강의안 생성 기능 그대로 유지
-- 경로만 /commbooks/* 로 변경
-
-## Previous Changes (2025-07-30)
-
-✓ Perplexity AI 혁신적 개선 - PPT 준비 강의안 (2025-07-30):
-- PPT 슬라이드별 구성: 제목, 핵심 포인트, 상세 내용, 발표자 노트 포함
-- 실제 기업 사례 요구: 회사명, 캠페인명, 구체적 성과 수치 필수 포함
-- 최신 데이터 인용: 2023-2024년 통계, 연구 결과, 출처 명시
-- 시각적 자료 제안: 차트, 그래프, 이미지 활용 가이드
-- PPT 제작 최적화: 발표에 바로 사용할 수 있는 실무적 구성
-- 검색 기반 콘텐츠: 온라인 검색을 통한 최신 정보 수집 강화
-
-✓ 강의안 표시 시스템 완전 수정:
-- format_lecture_plan 함수 전면 개선으로 빈 콘텐츠 문제 해결
-- Perplexity AI 데이터 구조에 최적화된 HTML 렌더링
-- 강의 세션별 상세 내용, 학습목표, 실무 적용방안 표시
-- 참고자료 및 생성일시 정보 포함
-
-✓ 책 이미지 표시 개선 (2025-07-31):
-- object-fit: cover → contain으로 변경하여 책 전체가 보이도록 수정
-- 첫 페이지와 상세 페이지 모두 세로폭에 맞춰 전체 표시
-- 배경색 추가로 빈 공간 자연스럽게 처리
-
-✓ 저자 사진 자동 추출 기능 구현 (2025-07-31):
-- ImageProcessor 클래스로 책 표지에서 저자 사진 영역 자동 감지 및 추출
-- 원형 저자 사진 생성 기능 (프로필용)
-- 데이터베이스에 저자 사진 경로 저장 (author_photo_path, author_photo_rounded_path)
-- 책 상세 페이지에서 자동 추출 및 표시
-- 저자명 옆에 작은 원형 프로필 사진, 책 표지 아래에 큰 저자 사진 카드 표시
-
-✓ Korean Language Tutor 통합 패키지 준비 완료 (2025-07-31):
-- 모든 스크래핑 데이터 및 이미지 백업 완료
-- 통합용 Python 모듈, 템플릿, 라우트 코드 패키징
-- 상세한 통합 가이드 및 단계별 매뉴얼 작성
-- korean_tutor_integration_package.tar.gz 통합 패키지 생성
-- 데이터베이스 백업 및 이미지 파일 압축 완료
-
-✓ 전체 시스템 기능 완성 (2025-07-31):
-- 스크래핑 데이터 처리 옵션: skip/update 선택 기능 구현
-- AI 정보 숨김 처리: 강의안에서 AI 관련 정보 자동 필터링
-- 강의안 생성 UI 개선: "Perplexity AI 활용" 마케팅 텍스트 제거
-- 저자 사진 개선: 원본 비율 유지하며 얼굴 중심 원형 크롭 처리
-- 강의안 히스토리 관리: 이전 버전 자동 보관 및 표시 시스템
-- 전체 데이터 내보내기: ZIP 형태로 책 정보, 이미지, PDF, 강의안 통합 다운로드
-- 강의안 개별 다운로드: 텍스트(.txt), PPT(.pptx) 형태로 개별 다운로드
-- 웹사이트 이전 가이드: 상세한 시스템 이전 매뉴얼 작성
-- 다운로드 버튼 UI 개선: 대시보드와 책 상세 페이지에 직관적인 다운로드 메뉴 추가
-
-✓ UI/UX 전면 개편:
-- 첨부된 디자인 파일 기반 밝은 배경 테마로 완전 변경
-- 핑크/자홍색 계열 primary 컬러 적용 (#e91e63)
-- 책 표지 표시 크기 확대 및 중앙 정렬로 개선
-- 카드 기반 깔끔한 레이아웃 적용
-- 현대적이고 깔끔한 디자인 시스템 구축
+## Recent Changes (2025-07-29)
 
 ✓ 브랜딩 및 UI 완전 적용:
 - 헤더: "AI오투오" → "컴북스-AI오투오"로 변경
@@ -127,12 +48,10 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 - **Template Engine**: Jinja2 templates with Flask
-- **Main Site Design**: 밝은 테마의 현대적 교육 플랫폼 디자인
-- **UI Framework**: Bootstrap 5 with 핑크/자홍색 primary 컬러 (#e91e63)
-- **Navigation**: 통합 네비게이션 (교육과정, 강사진, AI 교안 시스템)
+- **UI Framework**: Bootstrap 5 with dark theme
 - **Icons**: Font Awesome for UI icons
-- **Charts**: Chart.js for CommBooks 진행률 시각화
-- **Responsive**: 모바일 최적화된 반응형 디자인
+- **Charts**: Chart.js for progress visualization
+- **Styling**: Custom CSS with responsive design
 
 ### Database Schema
 The application uses two main database models:
@@ -169,17 +88,12 @@ The application uses two main database models:
 - **Customization**: Adapts lecture content based on book topic and complexity
 
 ### Web Interface (routes.py)
-- **Main Site Routes**: Korean Language Tutor 기반 교육 플랫폼 홈페이지
-  - / : 메인 홈페이지 (교육 과정, 강사진, AI 시스템 소개)
-  - /authors : 전문 강사진 소개 페이지
-  - /curriculums : 교육 과정 상세 안내
-- **CommBooks Routes**: AI 교안 생성 시스템 (/commbooks/* 경로)
-  - /commbooks : 스크래핑 대시보드 및 통계
-  - /commbooks/books : 수집된 책 목록 및 검색
-  - /commbooks/book/<id> : 책 상세 정보 및 강의안 생성
-  - /commbooks/start_scraping : 새 스크래핑 작업 시작
-- **API Endpoints**: CommBooks 관련 RESTful API (/api/commbooks/*)
-- **Progress Monitoring**: 실시간 스크래핑 진행률 추적
+- **Dashboard Route**: Main interface showing statistics and recent activity
+- **Job Management**: Start new scraping jobs with validation
+- **Book Details**: Enhanced book view with AI lecture plan integration
+- **Lecture Generation**: On-demand AI course creation from book content
+- **API Endpoints**: RESTful endpoints for status updates and data retrieval
+- **Progress Monitoring**: Real-time job progress tracking
 
 ### Models (models.py)
 - **Database Models**: SQLAlchemy models with proper relationships
@@ -242,4 +156,4 @@ The application uses two main database models:
 - **Error Handling**: Graceful error handling with user feedback
 - **Rate Limiting**: Built-in delays to prevent overwhelming target website
 
-통합 교육 플랫폼은 Korean Language Tutor의 교육 구조와 CommBooks의 AI 기술을 결합하여, 포괄적인 AI 시대 교육 솔루션을 제공합니다. Replit, Heroku 등의 PaaS 플랫폼에 최소 설정으로 배포 가능하도록 설계되었습니다.
+The application is designed to be easily deployable to platforms like Replit, Heroku, or similar PaaS providers with minimal configuration changes.

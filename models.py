@@ -16,10 +16,7 @@ class Book(db.Model):
     cover_image_path = db.Column(String(500))
     book_url = db.Column(String(500), unique=True, nullable=False)
     lecture_plan = db.Column(Text)  # AI 생성 강의안 (JSON 형태)
-    lecture_plan_history = db.Column(Text)  # 강의안 생성 히스토리 (JSON 배열)
     series_name = db.Column(String(300))  # 시리즈명 (예: 인공지능총서, 커뮤니케이션이해총서)
-    author_photo_path = db.Column(String(500))  # 저자 사진 경로 (책 표지에서 추출)
-    author_photo_rounded_path = db.Column(String(500))  # 원형 저자 사진 경로
     scraped_at = db.Column(DateTime, default=datetime.utcnow)
     
     def __repr__(self):
