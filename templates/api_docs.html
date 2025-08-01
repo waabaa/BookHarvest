@@ -136,6 +136,100 @@
             </div>
         </div>
 
+        <!-- 강의안 목록 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="badge bg-success me-2">GET</span>
+                        /api/lecture_plans
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>강의안이 생성된 모든 도서 목록을 반환합니다. PPT 다운로드 링크 포함.</p>
+                    <h6>파라미터:</h6>
+                    <ul>
+                        <li><code>page</code> (선택): 페이지 번호 (기본값: 1)</li>
+                        <li><code>per_page</code> (선택): 페이지당 항목 수 (기본값: 20, 최대: 100)</li>
+                        <li><code>series</code> (선택): 시리즈명으로 필터링</li>
+                    </ul>
+                    <h6>예시:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <code>GET {{ request.host_url }}api/lecture_plans?page=1&series=인공지능총서</code>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2" onclick="testAPI('/api/lecture_plans')">
+                        <i class="fas fa-play me-1"></i>테스트
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 특정 강의안 상세 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="badge bg-success me-2">GET</span>
+                        /api/lecture_plan/{book_id}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>특정 도서의 상세 강의안 내용을 반환합니다.</p>
+                    <h6>예시:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <code>GET {{ request.host_url }}api/lecture_plan/1</code>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2" onclick="testAPI('/api/lecture_plan/1')">
+                        <i class="fas fa-play me-1"></i>테스트
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PPT 다운로드 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="badge bg-info me-2">GET</span>
+                        /api/download_ppt/{book_id}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>강의안을 PPT 파일로 다운로드합니다. 브라우저에서 직접 다운로드되거나 링크로 사용 가능합니다.</p>
+                    <h6>예시:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <code>GET {{ request.host_url }}api/download_ppt/1</code>
+                    </div>
+                    <a href="/api/download_ppt/1" class="btn btn-outline-success btn-sm mt-2" target="_blank">
+                        <i class="fas fa-download me-1"></i>PPT 다운로드 테스트
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 강의안 생성 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="badge bg-warning me-2">POST</span>
+                        /api/generate_lecture_plan/{book_id}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>특정 도서에 대한 강의안을 AI로 생성합니다. 이미 생성된 경우 기존 강의안을 반환합니다.</p>
+                    <h6>예시:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <code>POST {{ request.host_url }}api/generate_lecture_plan/1</code>
+                    </div>
+                    <button class="btn btn-outline-warning btn-sm mt-2" onclick="testAPIPost('/api/generate_lecture_plan/1')">
+                        <i class="fas fa-magic me-1"></i>강의안 생성 테스트
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- 통계 정보 -->
         <div class="col-12 mb-4">
             <div class="card">
@@ -191,7 +285,36 @@ fetch('{{ request.host_url }}api/search?q=인공지능')
   .then(response => response.json())
   .then(data => {
     console.log('검색 결과:', data.books.length + '권');
-  });</code></pre>
+  });
+
+// 강의안 목록 가져오기
+fetch('{{ request.host_url }}api/lecture_plans')
+  .then(response => response.json())
+  .then(data => {
+    console.log('강의안 수:', data.lecture_plans.length);
+    data.lecture_plans.forEach(plan => {
+      console.log('강의안:', plan.book_title);
+      console.log('PPT 다운로드:', plan.ppt_download_url);
+    });
+  });
+
+// 특정 강의안 상세 정보
+fetch('{{ request.host_url }}api/lecture_plan/1')
+  .then(response => response.json())
+  .then(data => {
+    console.log('강의안 제목:', data.book_info.title);
+    console.log('세션 수:', data.lecture_plan.sessions.length);
+  });
+
+// 강의안 생성 (POST)
+fetch('{{ request.host_url }}api/generate_lecture_plan/1', {
+  method: 'POST'
+})
+.then(response => response.json())
+.then(data => {
+  console.log('생성 결과:', data.message);
+  console.log('PPT 다운로드:', data.ppt_download_url);
+});</code></pre>
                 </div>
             </div>
         </div>
@@ -237,6 +360,38 @@ async function testAPI(endpoint) {
             <div class="text-danger">
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 <strong>오류:</strong> ${error.message}
+            </div>
+        `;
+    }
+}
+
+async function testAPIPost(endpoint) {
+    const resultDiv = document.getElementById('api-result');
+    resultDiv.innerHTML = '<div class="text-warning"><i class="fas fa-spinner fa-spin me-2"></i>POST 요청 실행 중...</div>';
+    
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        
+        const statusClass = response.status >= 200 && response.status < 300 ? 'bg-success' : 'bg-danger';
+        
+        resultDiv.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong>POST 응답 결과:</strong>
+                <span class="badge ${statusClass}">HTTP ${response.status}</span>
+            </div>
+            <pre class="mb-0"><code>${JSON.stringify(data, null, 2)}</code></pre>
+        `;
+    } catch (error) {
+        resultDiv.innerHTML = `
+            <div class="text-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>POST 오류:</strong> ${error.message}
             </div>
         `;
     }

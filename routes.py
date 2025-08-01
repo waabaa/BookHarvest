@@ -721,3 +721,219 @@ def api_search():
             'has_prev': books.has_prev
         }
     })
+
+@app.route('/api/lecture_plans')
+def api_lecture_plans():
+    """Get all books that have lecture plans"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    series = request.args.get('series', None)
+    
+    # Limit per_page to reasonable values
+    per_page = min(per_page, 100)
+    
+    query = Book.query.filter(Book.lecture_plan.isnot(None))
+    
+    # Filter by series if specified
+    if series:
+        query = query.filter(Book.series_name.ilike(f'%{series}%'))
+    
+    # Paginate results
+    books = query.order_by(Book.scraped_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    lecture_plans_data = []
+    for book in books.items:
+        try:
+            lecture_plan = json.loads(book.lecture_plan) if book.lecture_plan else None
+        except:
+            lecture_plan = None
+            
+        lecture_data = {
+            'book_id': book.id,
+            'book_title': book.title,
+            'book_author': book.author,
+            'series_name': book.series_name,
+            'cover_image_url': f"{request.host_url}static/{book.cover_image_path}" if book.cover_image_path else None,
+            'lecture_plan': lecture_plan,
+            'ppt_download_url': f"{request.host_url}api/download_ppt/{book.id}" if lecture_plan else None,
+            'created_at': book.scraped_at.isoformat() if book.scraped_at else None
+        }
+        lecture_plans_data.append(lecture_data)
+    
+    return jsonify({
+        'lecture_plans': lecture_plans_data,
+        'pagination': {
+            'page': books.page,
+            'pages': books.pages,
+            'per_page': books.per_page,
+            'total': books.total,
+            'has_next': books.has_next,
+            'has_prev': books.has_prev
+        }
+    })
+
+@app.route('/api/lecture_plan/<int:book_id>')
+def api_lecture_plan_detail(book_id):
+    """Get detailed lecture plan for a specific book"""
+    book = Book.query.get_or_404(book_id)
+    
+    if not book.lecture_plan:
+        return jsonify({'error': 'No lecture plan found for this book'}), 404
+    
+    try:
+        lecture_plan = json.loads(book.lecture_plan)
+    except:
+        return jsonify({'error': 'Invalid lecture plan data'}), 500
+    
+    # Get PDF attachments
+    pdf_attachments = PDFAttachment.query.filter_by(book_id=book_id).all()
+    pdfs_data = []
+    for pdf in pdf_attachments:
+        pdfs_data.append({
+            'id': pdf.id,
+            'filename': pdf.filename,
+            'file_size': pdf.file_size,
+            'uploaded_at': pdf.uploaded_at.isoformat() if pdf.uploaded_at else None
+        })
+    
+    response_data = {
+        'book_info': {
+            'id': book.id,
+            'title': book.title,
+            'author': book.author,
+            'description': book.description,
+            'series_name': book.series_name,
+            'cover_image_url': f"{request.host_url}static/{book.cover_image_path}" if book.cover_image_path else None,
+            'pdf_attachments': pdfs_data
+        },
+        'lecture_plan': lecture_plan,
+        'ppt_download_url': f"{request.host_url}api/download_ppt/{book_id}",
+        'generated_at': lecture_plan.get('generated_at') if lecture_plan else None
+    }
+    
+    return jsonify(response_data)
+
+@app.route('/api/download_ppt/<int:book_id>')
+def api_download_ppt(book_id):
+    """Download PPT file for a specific book's lecture plan"""
+    try:
+        book = Book.query.get_or_404(book_id)
+        
+        if not book.lecture_plan:
+            return jsonify({'error': 'No lecture plan found for this book'}), 404
+        
+        # Prepare book data
+        book_data = {
+            'title': book.title,
+            'author': book.author,
+            'description': book.description,
+            'contents': book.contents,
+            'book_preview': book.book_preview,
+            'review_200': book.review_200
+        }
+        
+        # Generate PPT
+        ppt_generator = PPTGenerator()
+        success = ppt_generator.generate_lecture_ppt(book_data, book.lecture_plan)
+        
+        if not success:
+            return jsonify({'error': 'Failed to generate PPT'}), 500
+        
+        # Save PPT file
+        filename = f"{book.title.replace(' ', '_')}_강의안.pptx"
+        file_path = os.path.join('static', 'downloads', filename)
+        
+        # Ensure downloads directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        if not ppt_generator.save_ppt(file_path):
+            return jsonify({'error': 'Failed to save PPT'}), 500
+        
+        logger.info(f"Generated PPT via API for book: {book.title}")
+        
+        # Send file for download
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating PPT via API for book {book_id}: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/generate_lecture_plan/<int:book_id>', methods=['POST'])
+def api_generate_lecture_plan(book_id):
+    """Generate lecture plan via API"""
+    try:
+        book = Book.query.get_or_404(book_id)
+        
+        # Check if lecture plan already exists
+        if book.lecture_plan:
+            try:
+                existing_plan = json.loads(book.lecture_plan)
+                return jsonify({
+                    'message': 'Lecture plan already exists',
+                    'lecture_plan': existing_plan,
+                    'book_info': {
+                        'id': book.id,
+                        'title': book.title,
+                        'author': book.author
+                    }
+                })
+            except:
+                pass  # Continue to regenerate if existing plan is invalid
+        
+        # Get PDF content if available
+        pdf_content = ""
+        pdf_attachments = PDFAttachment.query.filter_by(book_id=book_id).all()
+        for pdf in pdf_attachments:
+            if pdf.content_text:
+                pdf_content += f"\n\n=== {pdf.filename} ===\n{pdf.content_text}"
+        
+        # Prepare book content
+        book_content = {
+            'title': book.title,
+            'author': book.author,
+            'description': book.description or "",
+            'contents': book.contents or "",
+            'book_preview': book.book_preview or "",
+            'review_200': book.review_200 or "",
+            'pdf_content': pdf_content
+        }
+        
+        # Generate lecture plan
+        generator = LectureGenerator()
+        lecture_plan = generator.generate_lecture_plan(book_content)
+        
+        if not lecture_plan:
+            return jsonify({'error': 'Failed to generate lecture plan'}), 500
+        
+        # Add generation timestamp
+        current_time = datetime.now().isoformat()
+        lecture_plan['generated_at'] = current_time
+        
+        # Save to database
+        book.lecture_plan = json.dumps(lecture_plan, ensure_ascii=False, indent=2)
+        db.session.commit()
+        
+        logger.info(f"Generated lecture plan via API for book: {book.title}")
+        
+        return jsonify({
+            'message': 'Lecture plan generated successfully',
+            'lecture_plan': lecture_plan,
+            'book_info': {
+                'id': book.id,
+                'title': book.title,
+                'author': book.author,
+                'series_name': book.series_name
+            },
+            'ppt_download_url': f"{request.host_url}api/download_ppt/{book_id}"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating lecture plan via API for book {book_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
