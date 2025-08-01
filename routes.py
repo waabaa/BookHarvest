@@ -417,8 +417,10 @@ def upload_pdf(book_id):
         
         if error:
             flash(error, 'error')
-        else:
+        elif pdf_attachment:
             flash(f'PDF 파일 "{pdf_attachment.filename}"이 성공적으로 업로드되었습니다.', 'success')
+        else:
+            flash('PDF 파일 업로드에 실패했습니다.', 'error')
         
     except Exception as e:
         logger.error(f"PDF 업로드 실패: {str(e)}")
@@ -528,4 +530,23 @@ def api_stats():
         'completed_jobs': completed_jobs,
         'running_jobs': running_jobs,
         'failed_jobs': failed_jobs
+    })
+
+@app.route('/api/job_status/<int:job_id>')
+def api_job_status(job_id):
+    """Get specific job status"""
+    job = ScrapingJob.query.get_or_404(job_id)
+    
+    return jsonify({
+        'id': job.id,
+        'status': job.status,
+        'current_page': job.current_page,
+        'total_books_found': job.total_books_found or 0,
+        'books_scraped': job.books_scraped,
+        'books_failed': job.books_failed,
+        'start_page': job.start_page,
+        'end_page': job.end_page,
+        'series_name': job.series_name,
+        'series_url': job.series_url,
+        'error_message': job.error_message
     })

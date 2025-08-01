@@ -137,7 +137,7 @@
                     {% endif %}
                     
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary" {% if running_jobs > 0 %}disabled{% endif %}>
+                        <button type="submit" class="btn btn-primary" id="start-scraping-btn" {% if running_jobs > 0 %}disabled{% endif %}>
                             <i class="fas fa-play me-2"></i>스크래핑 시작
                         </button>
                         
@@ -149,7 +149,7 @@
                     </div>
                     
                     {% if running_jobs > 0 %}
-                        <small class="text-muted d-block mt-2">
+                        <small class="text-muted d-block mt-2" id="running-status">
                             스크래핑 작업이 실행 중입니다. 완료될 때까지 기다려주세요.
                         </small>
                     {% endif %}
@@ -292,6 +292,15 @@ function updateJobStatus() {
                 } else if ((data.status === 'completed' || data.status === 'failed') && lastJobStatus === 'running') {
                     // Only reload if status changed from running to completed/failed
                     lastJobStatus = data.status;
+                    // Enable the start button immediately
+                    const startBtn = document.getElementById('start-scraping-btn');
+                    const runningStatus = document.getElementById('running-status');
+                    if (startBtn) {
+                        startBtn.disabled = false;
+                    }
+                    if (runningStatus) {
+                        runningStatus.style.display = 'none';
+                    }
                     setTimeout(() => {
                         location.reload();
                     }, 2000); // Delay reload slightly
