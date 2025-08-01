@@ -1,10 +1,14 @@
 from flask import render_template, request, jsonify, redirect, url_for, flash
+from flask_cors import CORS
 from app import app, db
 from models import Book, ScrapingJob, PDFAttachment
 from scraper import start_scraping_job
 from lecture_generator import LectureGenerator
 from ppt_generator import PPTGenerator
 from pdf_processor import PDFProcessor
+
+# Enable CORS for all API routes
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # PDF 프로세서 인스턴스 생성
 pdf_processor = PDFProcessor()
@@ -515,6 +519,11 @@ def jobs_list():
     jobs = ScrapingJob.query.order_by(ScrapingJob.started_at.desc()).all()
     return render_template('jobs_list.html', jobs=jobs)
 
+@app.route('/api_docs')
+def api_docs():
+    """API documentation page"""
+    return render_template('api_docs.html')
+
 @app.route('/api/stats')
 def api_stats():
     """Get overall statistics"""
@@ -549,4 +558,166 @@ def api_job_status(job_id):
         'series_name': job.series_name,
         'series_url': job.series_url,
         'error_message': job.error_message
+    })
+
+@app.route('/api/books')
+def api_books():
+    """Get all books with pagination"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    series = request.args.get('series', None)
+    
+    # Limit per_page to reasonable values
+    per_page = min(per_page, 100)
+    
+    query = Book.query
+    
+    # Filter by series if specified
+    if series:
+        query = query.filter(Book.series_name.ilike(f'%{series}%'))
+    
+    # Paginate results
+    books = query.order_by(Book.scraped_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    books_data = []
+    for book in books.items:
+        book_data = {
+            'id': book.id,
+            'title': book.title,
+            'author': book.author,
+            'description': book.description,
+            'review_200': book.review_200,
+            'contents': book.contents,
+            'book_preview': book.book_preview,
+            'publish_date': book.publish_date,
+            'series_name': book.series_name,
+            'book_url': book.book_url,
+            'scraped_at': book.scraped_at.isoformat() if book.scraped_at else None,
+            'cover_image_url': f"{request.host_url}static/{book.cover_image_path}" if book.cover_image_path else None,
+            'has_lecture_plan': bool(book.lecture_plan)
+        }
+        books_data.append(book_data)
+    
+    return jsonify({
+        'books': books_data,
+        'pagination': {
+            'page': books.page,
+            'pages': books.pages,
+            'per_page': books.per_page,
+            'total': books.total,
+            'has_next': books.has_next,
+            'has_prev': books.has_prev
+        }
+    })
+
+@app.route('/api/books/<int:book_id>')
+def api_book_detail(book_id):
+    """Get detailed information about a specific book"""
+    book = Book.query.get_or_404(book_id)
+    
+    # Get PDF attachments
+    pdf_attachments = PDFAttachment.query.filter_by(book_id=book_id).all()
+    pdfs_data = []
+    for pdf in pdf_attachments:
+        pdfs_data.append({
+            'id': pdf.id,
+            'filename': pdf.filename,
+            'file_size': pdf.file_size,
+            'uploaded_at': pdf.uploaded_at.isoformat() if pdf.uploaded_at else None,
+            'has_content': bool(pdf.content_text)
+        })
+    
+    book_data = {
+        'id': book.id,
+        'title': book.title,
+        'author': book.author,
+        'description': book.description,
+        'review_200': book.review_200,
+        'contents': book.contents,
+        'book_preview': book.book_preview,
+        'publish_date': book.publish_date,
+        'series_name': book.series_name,
+        'book_url': book.book_url,
+        'scraped_at': book.scraped_at.isoformat() if book.scraped_at else None,
+        'cover_image_url': f"{request.host_url}static/{book.cover_image_path}" if book.cover_image_path else None,
+        'lecture_plan': json.loads(book.lecture_plan) if book.lecture_plan else None,
+        'pdf_attachments': pdfs_data
+    }
+    
+    return jsonify(book_data)
+
+@app.route('/api/series')
+def api_series():
+    """Get all available book series"""
+    from sqlalchemy import func
+    
+    series_data = db.session.query(
+        Book.series_name,
+        func.count(Book.id).label('book_count')
+    ).group_by(Book.series_name).all()
+    
+    series_list = []
+    for series_name, book_count in series_data:
+        if series_name:  # Skip null series names
+            series_list.append({
+                'name': series_name,
+                'book_count': book_count
+            })
+    
+    return jsonify({
+        'series': series_list,
+        'total_series': len(series_list)
+    })
+
+@app.route('/api/search')
+def api_search():
+    """Search books by title, author, or content"""
+    query = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    if not query:
+        return jsonify({'error': 'Search query is required'}), 400
+    
+    # Limit per_page to reasonable values
+    per_page = min(per_page, 100)
+    
+    # Search in title, author, description, and contents
+    search_filter = db.or_(
+        Book.title.ilike(f'%{query}%'),
+        Book.author.ilike(f'%{query}%'),
+        Book.description.ilike(f'%{query}%'),
+        Book.contents.ilike(f'%{query}%')
+    )
+    
+    books = Book.query.filter(search_filter).order_by(
+        Book.scraped_at.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    
+    books_data = []
+    for book in books.items:
+        book_data = {
+            'id': book.id,
+            'title': book.title,
+            'author': book.author,
+            'description': book.description,
+            'series_name': book.series_name,
+            'cover_image_url': f"{request.host_url}static/{book.cover_image_path}" if book.cover_image_path else None,
+            'scraped_at': book.scraped_at.isoformat() if book.scraped_at else None
+        }
+        books_data.append(book_data)
+    
+    return jsonify({
+        'query': query,
+        'books': books_data,
+        'pagination': {
+            'page': books.page,
+            'pages': books.pages,
+            'per_page': books.per_page,
+            'total': books.total,
+            'has_next': books.has_next,
+            'has_prev': books.has_prev
+        }
     })

@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}API 문서 - 컴북스-AI오투오{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-code me-2"></i>API 문서</h2>
+                <div>
+                    <span class="badge bg-success">v1.0</span>
+                    <span class="badge bg-info ms-2">REST API</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API 개요 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">📚 컴북스 도서 데이터 API</h5>
+                    <p class="card-text">
+                        스크래핑된 도서 정보와 표지 이미지를 다른 웹사이트에서 활용할 수 있도록 제공하는 REST API입니다.
+                        모든 응답은 JSON 형태로 제공되며, CORS가 활성화되어 있어 브라우저에서 직접 호출 가능합니다.
+                    </p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Base URL:</strong> <code>{{ request.host_url }}api/</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API 엔드포인트들 -->
+    <div class="row">
+        <!-- 전체 도서 목록 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="badge bg-success me-2">GET</span>
+                        /api/books
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>전체 도서 목록을 페이지네이션과 함께 반환합니다.</p>
+                    <h6>파라미터:</h6>
+                    <ul>
+                        <li><code>page</code> (선택): 페이지 번호 (기본값: 1)</li>
+                        <li><code>per_page</code> (선택): 페이지당 항목 수 (기본값: 20, 최대: 100)</li>
+                        <li><code>series</code> (선택): 시리즈명으로 필터링</li>
+                    </ul>
+                    <h6>예시:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <code>GET {{ request.host_url }}api/books?page=1&per_page=10&series=인공지능총서</code>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2" onclick="testAPI('/api/books')">
+                        <i class="fas fa-play me-1"></i>테스트
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 도서 상세 정보 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="badge bg-success me-2">GET</span>
+                        /api/books/{book_id}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>특정 도서의 상세 정보를 반환합니다. 강의안과 PDF 첨부파일 정보도 포함됩니다.</p>
+                    <h6>예시:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <code>GET {{ request.host_url }}api/books/1</code>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2" onclick="testAPI('/api/books/1')">
+                        <i class="fas fa-play me-1"></i>테스트
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 시리즈 목록 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="badge bg-success me-2">GET</span>
+                        /api/series
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>모든 도서 시리즈 목록과 각 시리즈별 도서 수를 반환합니다.</p>
+                    <h6>예시:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <code>GET {{ request.host_url }}api/series</code>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2" onclick="testAPI('/api/series')">
+                        <i class="fas fa-play me-1"></i>테스트
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 도서 검색 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="badge bg-success me-2">GET</span>
+                        /api/search
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>제목, 저자, 설명, 목차에서 키워드를 검색합니다.</p>
+                    <h6>파라미터:</h6>
+                    <ul>
+                        <li><code>q</code> (필수): 검색 키워드</li>
+                        <li><code>page</code> (선택): 페이지 번호 (기본값: 1)</li>
+                        <li><code>per_page</code> (선택): 페이지당 항목 수 (기본값: 20, 최대: 100)</li>
+                    </ul>
+                    <h6>예시:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <code>GET {{ request.host_url }}api/search?q=인공지능&page=1</code>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2" onclick="testAPI('/api/search?q=인공지능')">
+                        <i class="fas fa-play me-1"></i>테스트
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 정보 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="badge bg-success me-2">GET</span>
+                        /api/stats
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>전체 통계 정보를 반환합니다.</p>
+                    <h6>예시:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <code>GET {{ request.host_url }}api/stats</code>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2" onclick="testAPI('/api/stats')">
+                        <i class="fas fa-play me-1"></i>테스트
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 사용 예시 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">💡 JavaScript 사용 예시</h5>
+                </div>
+                <div class="card-body">
+                    <pre><code class="language-javascript">// 전체 도서 목록 가져오기
+fetch('{{ request.host_url }}api/books')
+  .then(response => response.json())
+  .then(data => {
+    console.log('총 도서 수:', data.pagination.total);
+    data.books.forEach(book => {
+      console.log(book.title, book.author);
+    });
+  });
+
+// 특정 도서 상세 정보 가져오기
+fetch('{{ request.host_url }}api/books/1')
+  .then(response => response.json())
+  .then(book => {
+    console.log('도서명:', book.title);
+    console.log('표지 이미지:', book.cover_image_url);
+    console.log('강의안 있음:', book.lecture_plan ? '예' : '아니오');
+  });
+
+// 도서 검색
+fetch('{{ request.host_url }}api/search?q=인공지능')
+  .then(response => response.json())
+  .then(data => {
+    console.log('검색 결과:', data.books.length + '권');
+  });</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API 테스트 결과 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">🧪 API 테스트 결과</h5>
+                </div>
+                <div class="card-body">
+                    <div id="api-result" class="bg-light p-3 rounded" style="min-height: 100px;">
+                        <div class="text-muted">위의 "테스트" 버튼을 클릭하여 API를 테스트해보세요.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function testAPI(endpoint) {
+    const resultDiv = document.getElementById('api-result');
+    resultDiv.innerHTML = '<div class="text-primary"><i class="fas fa-spinner fa-spin me-2"></i>API 호출 중...</div>';
+    
+    try {
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        
+        resultDiv.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong>응답 결과:</strong>
+                <span class="badge bg-success">HTTP ${response.status}</span>
+            </div>
+            <pre class="mb-0"><code>${JSON.stringify(data, null, 2)}</code></pre>
+        `;
+    } catch (error) {
+        resultDiv.innerHTML = `
+            <div class="text-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>오류:</strong> ${error.message}
+            </div>
+        `;
+    }
+}
+</script>
+{% endblock %}

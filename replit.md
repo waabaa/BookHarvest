@@ -8,33 +8,28 @@ This is a Flask-based web scraper application designed to extract book informati
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (2025-07-29)
+## Recent Changes (2025-08-01)
 
-✓ 브랜딩 및 UI 완전 적용:
-- 헤더: "AI오투오" → "컴북스-AI오투오"로 변경
-- 메인 타이틀: "AI 교제/교안 작성"으로 정리
-- 푸터: "AI오투오 | AI 강의 파트너와 더 효과적인 수업 준비"로 변경
+✓ REST API 시스템 구축:
+- 다른 웹사이트에서 책 데이터 활용 가능한 RESTful API 구현
+- 엔드포인트: /api/books, /api/books/<id>, /api/series, /api/search, /api/stats
+- 페이지네이션, 검색, 시리즈별 필터링 지원
+- 책 표지 이미지 URL 제공으로 외부 사이트에서 직접 사용 가능
 
-✓ 보안 강화:
-- 스크래핑 시작 시 비밀번호(0438) 인증 기능 추가
-- 기존 데이터 삭제 시에도 동일한 비밀번호 보호
+✓ CORS 지원 추가:
+- Flask-CORS 패키지 설치 및 적용
+- 모든 API 엔드포인트에 크로스 오리진 요청 허용
+- 브라우저에서 직접 API 호출 가능
 
-✓ 시리즈별 스크래핑 기능 구현:
-- URL 입력을 통한 새로운 시리즈 스크래핑 지원
-- URL 패턴: /도서-태그/[시리즈명]/page/[페이지번호]/
-- 시리즈명 자동 추출 및 데이터베이스 저장
-- 기존 AI총서 외에 커뮤니케이션이해총서 등 다양한 시리즈 지원
+✓ API 문서 페이지:
+- /api_docs 경로로 자세한 API 사용법 제공
+- JavaScript 예시 코드 포함
+- 실시간 API 테스트 기능
 
-✓ 데이터베이스 스키마 확장:
-- Book 모델에 series_name 컬럼 추가
-- ScrapingJob 모델에 series_name, series_url 컬럼 추가
-- 시리즈별 책 분류 및 관리 기능
-
-✓ PDF 첨부 및 강의안 연동:
-- 책별 PDF 파일 업로드 및 텍스트 추출
-- 강의안 생성 시 PDF 내용 자동 포함
-- PDF 관리 (업로드, 삭제) 기능
-- 사용자 안내 메시지 개선
+✓ 스크래핑 버튼 활성화 문제 해결:
+- 멈춰있던 실행중 작업 종료 처리
+- 실시간 상태 업데이트 로직 개선
+- 작업 완료 시 버튼 즉시 활성화
 
 ## System Architecture
 
